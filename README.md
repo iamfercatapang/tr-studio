@@ -4,6 +4,8 @@ A modern Windows app for the screen on the Thermalright Core Vision 360 AIO cool
 
 > **Unofficial.** TR Studio is an independent project. It is not made, endorsed or supported by Thermalright. Thermalright and Core Vision are their owner's trademarks.
 
+![The TR Studio Metrics page, with live CPU, GPU, cooling and system stats](docs/screenshots/metrics.png)
+
 ## Why I built it
 
 The Core Vision 360 is great hardware, but the software it ships with let it down. TRCC was buggy and hard to use:
@@ -32,6 +34,8 @@ So I built a replacement with three priorities: stay reliable, be easy to use, a
 - Export and import themes as `.tstheme` files, with their media included
 - Screen rotation in 90° steps
 
+![The Themes page, with a live preview, the Theme Playlist and the theme gallery](docs/screenshots/themes.png)
+
 ### Theme Playlist
 
 - Choose 2 or 3 themes to show in turn, in the order you set
@@ -48,6 +52,8 @@ So I built a replacement with three priorities: stay reliable, be easy to use, a
 - Fonts, text stroke and shadow, snapping guides and full undo and redo
 - Shapes in eight types, with rotation, gradients, opacity, outlines and dashed or dotted lines
 - Save, Save As, and warnings when an item runs off a round screen
+
+![The Editor, with Add tiles, the Layers list and a live preview of a theme](docs/screenshots/editor.png)
 
 ### Color
 
