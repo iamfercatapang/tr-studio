@@ -29,7 +29,8 @@ static class WindowsStartup
     public static void Disable(bool restoreTrcc)
     {
         Require(Run(StartupCommands.Delete()));
-        if (restoreTrcc) Require(Run(StartupCommands.SetTrccEnabled(true)));
+        // TRCC may have been uninstalled since its task was paused.
+        if (restoreTrcc && Run(StartupCommands.Query(StartupCommands.TrccTaskName)).ExitCode == 0) Require(Run(StartupCommands.SetTrccEnabled(true)));
     }
 
     static void Require((int ExitCode, string Output) result)
