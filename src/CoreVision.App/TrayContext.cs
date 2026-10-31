@@ -43,11 +43,11 @@ sealed class TrayContext : ApplicationContext
         _themes = new ThemeStore(Path.Combine(Settings.DataFolder, "themes"), Log);
 
         var menu = new ContextMenuStrip();
-        menu.Items.Add("Open Thermalright Studio", null, (_, _) => ShowWindow());
+        menu.Items.Add("Open TR Studio", null, (_, _) => ShowWindow());
         menu.Items.Add(_statusItem);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Quit", null, (_, _) => Quit());
-        _icon = new NotifyIcon { Icon = AppIcon.Load(SystemInformation.SmallIconSize), Text = "Thermalright Studio", ContextMenuStrip = menu, Visible = true };
+        _icon = new NotifyIcon { Icon = AppIcon.Load(SystemInformation.SmallIconSize), Text = "TR Studio", ContextMenuStrip = menu, Visible = true };
         _icon.DoubleClick += (_, _) => ShowWindow();
 
         _sensors = new SensorMonitor(() => new LibreSensorSource(), log: Log);
@@ -66,6 +66,15 @@ sealed class TrayContext : ApplicationContext
         _link.StatusChanged += OnLinkStatus;
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
         _link.Start();
+
+        Task.Run(() =>
+        {
+            try { WindowsStartup.PointAtThisCopy(); }
+            catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception or IOException)
+            {
+                Log($"Could not update the Windows startup task: {e.Message}");
+            }
+        });
 
         if (!startHidden) ShowWindow();
     }

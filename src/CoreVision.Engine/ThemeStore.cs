@@ -151,7 +151,8 @@ public sealed class ThemeStore(string folder, Action<string>? log = null)
     {
         var onPath = (Environment.GetEnvironmentVariable("PATH") ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries)
             .Select(dir => System.IO.Path.Combine(dir.Trim(), "ffmpeg.exe"));
-        return onPath.Append(@"C:\Program Files\TRCCCAP\ffmpeg.exe").FirstOrDefault(File.Exists);
+        var installed = System.IO.Path.Combine(AppContext.BaseDirectory, "ffmpeg.exe");
+        return onPath.Prepend(installed).Append(@"C:\Program Files\TRCCCAP\ffmpeg.exe").FirstOrDefault(File.Exists);
     }
 
     public static BackgroundKind? KindOf(string path) => System.IO.Path.GetExtension(path).ToLowerInvariant() switch

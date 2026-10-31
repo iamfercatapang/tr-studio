@@ -23,7 +23,7 @@ sealed class MainWindow : Form
     public MainWindow(TrayContext app)
     {
         _app = app;
-        Text = "Thermalright Studio";
+        Text = "TR Studio";
         ClientSize = new Size(1280, 780);
         MinimumSize = new Size(1100, 680);
         StartPosition = FormStartPosition.CenterScreen;
@@ -201,7 +201,7 @@ sealed class MainWindow : Form
         if (!ScreenRegionPicker.TryShow(Finish, _app.Log)) Finish(null);
     }
 
-    const string PackageFilter = "Thermalright Studio theme|*" + ThemeStore.PackageExtension;
+    const string PackageFilter = "TR Studio theme|*" + ThemeStore.PackageExtension;
 
     static string FileNameFor(string name)
     {
@@ -226,7 +226,7 @@ sealed class MainWindow : Form
         if (dialog.ShowDialog(this) == DialogResult.OK) _app.ImportTheme(dialog.FileName);
     }
 
-    const string PaletteFilter = "Thermalright Studio palette|*" + PaletteStore.PackageExtension;
+    const string PaletteFilter = "TR Studio palette|*" + PaletteStore.PackageExtension;
 
     void ExportPalette(string name, IReadOnlyList<string> colors)
     {

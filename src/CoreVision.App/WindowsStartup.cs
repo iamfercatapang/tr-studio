@@ -20,6 +20,12 @@ static class WindowsStartup
         return true;
     }
 
+    /// <summary>An installed or moved copy takes the task over, so sign-in never starts an old one.</summary>
+    public static void PointAtThisCopy()
+    {
+        if (IsEnabled() && Environment.ProcessPath is { } path) Require(Run(StartupCommands.Create(path)));
+    }
+
     public static void Disable(bool restoreTrcc)
     {
         Require(Run(StartupCommands.Delete()));

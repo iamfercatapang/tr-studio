@@ -7,31 +7,25 @@ function Draw-Frame([int] $size) {
     $bitmap = [Drawing.Bitmap]::new($size, $size, [Drawing.Imaging.PixelFormat]::Format32bppArgb)
     $g = [Drawing.Graphics]::FromImage($bitmap)
     $g.SmoothingMode = 'AntiAlias'
+    $g.PixelOffsetMode = 'HighQuality' # otherwise the rounded corners sit half a pixel off
 
-    # A dark tile keeps the white mark readable on a light taskbar or in Explorer.
-    $diameter = [Math]::Max(4, $size * 0.44)
-    $far = $size - $diameter - 1
-    $tile = [Drawing.Drawing2D.GraphicsPath]::new()
-    $tile.AddArc(0, 0, $diameter, $diameter, 180, 90)
-    $tile.AddArc($far, 0, $diameter, $diameter, 270, 90)
-    $tile.AddArc($far, $far, $diameter, $diameter, 0, 90)
-    $tile.AddArc(0, $far, $diameter, $diameter, 90, 90)
-    $tile.CloseFigure()
-    $g.FillPath([Drawing.Brushes]::Black, $tile)
+    # A plain window: a blue frame with a title bar around a light pane. Both colors show on any taskbar.
+    $diameter = [Math]::Max(3, $size * 0.2)
+    $far = $size - $diameter
+    $frame = [Drawing.Drawing2D.GraphicsPath]::new()
+    $frame.AddArc(0, 0, $diameter, $diameter, 180, 90)
+    $frame.AddArc($far, 0, $diameter, $diameter, 270, 90)
+    $frame.AddArc($far, $far, $diameter, $diameter, 0, 90)
+    $frame.AddArc(0, $far, $diameter, $diameter, 90, 90)
+    $frame.CloseFigure()
+    $blue = [Drawing.SolidBrush]::new([Drawing.Color]::FromArgb(10, 132, 255))
+    $pane = [Drawing.SolidBrush]::new([Drawing.Color]::FromArgb(245, 245, 247))
+    $g.FillPath($blue, $frame)
 
-    # The logo on a 22 unit square: a bar 10 high, a gap of 1, then two blocks with a gap of 2.
     $g.SmoothingMode = 'None'
-    $margin = [int][Math]::Round($size * 0.15)
-    $mark = $size - 2 * $margin
-    $barHeight = [int][Math]::Round($mark * 10 / 22)
-    $rowGap = [Math]::Max(1, [int][Math]::Round($mark / 22))
-    $columnGap = [Math]::Max(1, [int][Math]::Round($mark * 2 / 22))
-    $blockWidth = [int][Math]::Floor(($mark - $columnGap) / 2)
-    $lowerTop = $margin + $barHeight + $rowGap
-    $lowerHeight = $mark - $barHeight - $rowGap
-    $g.FillRectangle([Drawing.Brushes]::White, $margin, $margin, $mark, $barHeight)
-    $g.FillRectangle([Drawing.Brushes]::White, $margin, $lowerTop, $blockWidth, $lowerHeight)
-    $g.FillRectangle([Drawing.Brushes]::White, ($margin + $mark - $blockWidth), $lowerTop, $blockWidth, $lowerHeight)
+    $border = [Math]::Max(1, [int][Math]::Round($size * 0.08))
+    $titleBar = [Math]::Max(3, [int][Math]::Round($size * 0.24))
+    $g.FillRectangle($pane, $border, $titleBar, $size - 2 * $border, $size - $titleBar - $border)
     $g.Dispose()
 
     $png = [IO.MemoryStream]::new()
