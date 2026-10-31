@@ -1,0 +1,59 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{E0770E52-363D-463F-8A33-EB957E2E8B06}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CoreVision.Engine", "src\CoreVision.Engine\CoreVision.Engine.csproj", "{51336F28-1F03-48FC-9688-A8C1405FF1D0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CoreVision.App", "src\CoreVision.App\CoreVision.App.csproj", "{263996B5-5BDF-403F-BA60-ED140A79318A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{6FD53B74-D931-474E-99FA-3E964A95B244}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CoreVision.Engine.Tests", "tests\CoreVision.Engine.Tests\CoreVision.Engine.Tests.csproj", "{F27A7406-27A5-404D-995C-662417594068}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{9D6243F7-361D-4283-9BA4-8A92F65CE307}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScreenProbe", "tools\ScreenProbe\ScreenProbe.csproj", "{FBCCC694-A6F6-44B3-B883-AB029067FEE0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SensorProbe", "tools\SensorProbe\SensorProbe.csproj", "{65D46FC3-F59C-44C7-91CE-038C11489987}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{51336F28-1F03-48FC-9688-A8C1405FF1D0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{51336F28-1F03-48FC-9688-A8C1405FF1D0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{51336F28-1F03-48FC-9688-A8C1405FF1D0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{51336F28-1F03-48FC-9688-A8C1405FF1D0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{263996B5-5BDF-403F-BA60-ED140A79318A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{263996B5-5BDF-403F-BA60-ED140A79318A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{263996B5-5BDF-403F-BA60-ED140A79318A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{263996B5-5BDF-403F-BA60-ED140A79318A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F27A7406-27A5-404D-995C-662417594068}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F27A7406-27A5-404D-995C-662417594068}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F27A7406-27A5-404D-995C-662417594068}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F27A7406-27A5-404D-995C-662417594068}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FBCCC694-A6F6-44B3-B883-AB029067FEE0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FBCCC694-A6F6-44B3-B883-AB029067FEE0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FBCCC694-A6F6-44B3-B883-AB029067FEE0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FBCCC694-A6F6-44B3-B883-AB029067FEE0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{65D46FC3-F59C-44C7-91CE-038C11489987}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{65D46FC3-F59C-44C7-91CE-038C11489987}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{65D46FC3-F59C-44C7-91CE-038C11489987}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{65D46FC3-F59C-44C7-91CE-038C11489987}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{51336F28-1F03-48FC-9688-A8C1405FF1D0} = {E0770E52-363D-463F-8A33-EB957E2E8B06}
+		{263996B5-5BDF-403F-BA60-ED140A79318A} = {E0770E52-363D-463F-8A33-EB957E2E8B06}
+		{F27A7406-27A5-404D-995C-662417594068} = {6FD53B74-D931-474E-99FA-3E964A95B244}
+		{FBCCC694-A6F6-44B3-B883-AB029067FEE0} = {9D6243F7-361D-4283-9BA4-8A92F65CE307}
+		{65D46FC3-F59C-44C7-91CE-038C11489987} = {9D6243F7-361D-4283-9BA4-8A92F65CE307}
+	EndGlobalSection
+EndGlobal

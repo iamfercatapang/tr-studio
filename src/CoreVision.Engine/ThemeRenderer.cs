@@ -1,0 +1,583 @@
+using System.Diagnostics;
+using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
+using System.Drawing.Text;
+using System.Globalization;
+
+namespace CoreVision.Engine;
+
+/// <summary>Draws a theme's elements. Readings that cannot be trusted show a dash, never a number.</summary>
+public sealed class ThemeRenderer : IDisposable
+{
+    public const int ScreenSize = 480;
+    const string NoValue = "–";
+
+    readonly Bitmap _canvas;
+    readonly int _quality;
+
+    /// <summary>
+    /// Themes are designed around a 480 unit square. Other screens scale that square to their
+    /// shorter side and center it, so any theme fits, and wide screens gain room at the sides.
+    /// </summary>
+    public ThemeRenderer(int width = ScreenSize, int height = ScreenSize, int quality = ScreenProtocol.DefaultJpegQuality)
+    {
+        _canvas = new Bitmap(width, height);
+        _quality = quality;
+    }
+    const int MaxBlurSteps = 12;
+    const int ShadowStrength = 200;
+    const float GaugeStepDegrees = 2.5f;
+    const string Degree = "°";
+    const float DegreeShare = 0.5f;
+    const float DegreeGap = 0.08f;
+    const float TrackStepDegrees = 6f;
+    const float TrackTint = 0.26f;
+    const float GaugeDotShare = 0.8f;
+    const float GaugeGapShare = 0.4f;
+    const double GaugeSpringRate = 4.5; // about a second to arrive, which is how often sensors read
+    const double GaugeLongestStep = 0.05;
+    const double GaugeSettledShare = 0.001;
+    const double GaugeSettledSpeed = 0.002;
+    const float BarStripeSpacing = 6f;
+    const float BarStripeWidth = 2f;
+    const float MinBarThickness = 2f;
+    const int BarStripeAlpha = 110;
+    const float MinShapeSize = 1f;
+    const float StarInnerShare = 0.45f;
+    const float DashShare = 3f;
+    const float DashGapShare = 2f;
+    const float DotGapShare = 2f;
+
+    const float MinCaptureSize = 20f;
+    const double FadeSeconds = 0.8;
+
+    Bitmap? _fadeFrom;
+    readonly Stopwatch _sinceFade = new();
+
+    readonly Dictionary<(int Index, Metric Metric), (double Shown, double Speed)> _gaugeValues = [];
+    readonly Dictionary<(Rectangle Source, Size Fitted), ScreenCapture> _captures = [];
+    readonly Stopwatch _sinceRender = Stopwatch.StartNew();
+    double _frameSeconds;
+
+    /// <summary>True while a gauge is still easing toward its latest reading.</summary>
+    public bool IsAnimating { get; private set; }
+
+    readonly Dictionary<(string Family, bool Bold, bool Italic), (FontFamily Family, FontStyle Style)> _fonts = [];
+
+    public byte[] Render(IBackground background, IReadOnlyList<ElementSpec> elements, Stats stats, DateTime now, float dim = 0)
+    {
+        using var g = Graphics.FromImage(_canvas);
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        background.Draw(g);
+        if (dim > 0)
+        {
+            using var scrim = new SolidBrush(Color.FromArgb((int)(Math.Min(dim, 1f) * 255), Color.Black));
+            g.FillRectangle(scrim, 0, 0, _canvas.Width, _canvas.Height);
+        }
+        var scale = Math.Min(_canvas.Width, _canvas.Height) / (float)ScreenSize;
+        g.TranslateTransform(_canvas.Width / 2f, _canvas.Height / 2f);
+        g.ScaleTransform(scale, scale);
+        g.TranslateTransform(-ScreenSize / 2f, -ScreenSize / 2f);
+        _frameSeconds = _sinceRender.Elapsed.TotalSeconds;
+        _sinceRender.Restart();
+        IsAnimating = false;
+        var capturesUsed = new HashSet<(Rectangle, Size)>();
+        for (var i = 0; i < elements.Count; i++)
+        {
+            if (elements[i].Hidden) continue;
+            if (elements[i].Kind == ElementKind.Gauge) DrawGauge(g, i, elements[i], stats);
+            else if (elements[i].Kind == ElementKind.Bar) DrawBar(g, i, elements[i], stats);
+            else if (elements[i].Kind == ElementKind.Shape) DrawShape(g, elements[i]);
+            else if (elements[i].Kind == ElementKind.Capture) DrawCapture(g, elements[i], scale, capturesUsed);
+            else Draw(g, elements[i], stats, now);
+        }
+        foreach (var key in _captures.Keys.Where(key => !capturesUsed.Contains(key)).ToList())
+        {
+            _captures[key].Dispose();
+            _captures.Remove(key);
+        }
+        DrawFade(g);
+        return JpegFrame.Encode(_canvas, _quality);
+    }
+
+    /// <summary>The next frames dissolve from what is on the screen now to whatever is drawn next.</summary>
+    public void BeginFade()
+    {
+        _fadeFrom?.Dispose();
+        _fadeFrom = (Bitmap)_canvas.Clone();
+        _sinceFade.Restart();
+    }
+
+    void DrawFade(Graphics g)
+    {
+        if (_fadeFrom == null) return;
+        var progress = _sinceFade.Elapsed.TotalSeconds / FadeSeconds;
+        if (progress >= 1)
+        {
+            _fadeFrom.Dispose();
+            _fadeFrom = null;
+            return;
+        }
+        IsAnimating = true;
+        var eased = progress * progress * (3 - 2 * progress); // starts and ends gently
+        using var attributes = new ImageAttributes();
+        attributes.SetColorMatrix(new ColorMatrix { Matrix33 = (float)(1 - eased) });
+        g.ResetTransform();
+        g.DrawImage(_fadeFrom, new Rectangle(Point.Empty, _canvas.Size), 0, 0, _canvas.Width, _canvas.Height, GraphicsUnit.Pixel, attributes);
+    }
+
+    /// <summary>Where a capture sits on the 480 unit square. It keeps the shape of its desktop area.</summary>
+    public static RectangleF? CaptureBox(ElementSpec element)
+    {
+        if (element.CaptureWidth <= 0 || element.CaptureHeight <= 0) return null;
+        var width = Math.Max(element.Size, MinCaptureSize);
+        var height = width * element.CaptureHeight / element.CaptureWidth;
+        return new RectangleF(element.X - width / 2, element.Y - height / 2, width, height);
+    }
+
+    /// <summary>Painted with a brush, not a clip, because only a fill gives the rounded corners smooth edges.</summary>
+    void DrawCapture(Graphics g, ElementSpec element, float scale, HashSet<(Rectangle, Size)> used)
+    {
+        if (CaptureBox(element) is not { } box) return;
+        var source = new Rectangle(element.CaptureX, element.CaptureY, element.CaptureWidth, element.CaptureHeight);
+        var fitted = new Size(Math.Max((int)Math.Ceiling(box.Width * scale), 1), Math.Max((int)Math.Ceiling(box.Height * scale), 1));
+        var key = (source, fitted);
+        if (!_captures.TryGetValue(key, out var capture)) _captures[key] = capture = new ScreenCapture(source, fitted);
+        used.Add(key);
+        capture.Refresh();
+        IsAnimating = true; // the desktop can change at any moment
+
+        using var brush = new TextureBrush(capture.Image, WrapMode.Clamp);
+        brush.TranslateTransform(box.X, box.Y);
+        brush.ScaleTransform(box.Width / fitted.Width, box.Height / fitted.Height);
+        using var shape = RoundedBox(box, Math.Clamp(element.CornerRadius, 0, Math.Min(box.Width, box.Height) / 2));
+        g.FillPath(brush, shape);
+    }
+
+    static GraphicsPath RoundedBox(RectangleF box, float radius)
+    {
+        var path = new GraphicsPath();
+        if (radius <= 0)
+        {
+            path.AddRectangle(box);
+            return path;
+        }
+        var diameter = radius * 2;
+        path.AddArc(box.Left, box.Top, diameter, diameter, 180, 90);
+        path.AddArc(box.Right - diameter, box.Top, diameter, diameter, 270, 90);
+        path.AddArc(box.Right - diameter, box.Bottom - diameter, diameter, diameter, 0, 90);
+        path.AddArc(box.Left, box.Bottom - diameter, diameter, diameter, 90, 90);
+        path.CloseFigure();
+        return path;
+    }
+
+    /// <summary>Encodes the last rendered frame turned clockwise. The canvas itself stays upright.</summary>
+    public byte[] EncodeRotated(int degrees)
+    {
+        if (degrees is 90 or 270 && _canvas.Width != _canvas.Height) degrees = 0; // the panel's size can't swap
+        using var rotated = (Bitmap)_canvas.Clone();
+        rotated.RotateFlip(degrees switch
+        {
+            90 => RotateFlipType.Rotate90FlipNone,
+            180 => RotateFlipType.Rotate180FlipNone,
+            270 => RotateFlipType.Rotate270FlipNone,
+            _ => RotateFlipType.RotateNoneFlipNone,
+        });
+        return JpegFrame.Encode(rotated, _quality);
+    }
+
+    public static string TextOf(ElementSpec element, Stats stats, DateTime now) => element.Kind switch
+    {
+        ElementKind.Metric => FormatReading(stats.Get(element.Metric), element.Unit, element.Metric is Metric.MemoryUsed or Metric.MemoryAvailable),
+        ElementKind.Clock or ElementKind.Date => FormatTime(now, element.Format),
+        _ => element.Text ?? "",
+    };
+
+    /// <summary>Uses a fixed culture, so a format shows the same separators as its preview in the editor.</summary>
+    static string FormatTime(DateTime now, string format)
+    {
+        try { return now.ToString(format, CultureInfo.InvariantCulture); }
+        catch (FormatException) { return now.ToString("HH:mm", CultureInfo.InvariantCulture); }
+    }
+
+    static string FormatReading(Reading reading, string? unit, bool oneDecimal) =>
+        reading is { State: ReadingState.Ok, Value: { } value } ? value.ToString(oneDecimal ? "F1" : "F0", CultureInfo.InvariantCulture) + unit : NoValue;
+
+    /// <summary>Where a value sits on the gauge, from 0 to 1. A bad range reads as empty.</summary>
+    public static double GaugeShare(double value, float min, float max) =>
+        max > min ? Math.Clamp((value - min) / (max - min), 0, 1) : 0;
+
+    static Color Blend(Color from, Color to, float share) => Color.FromArgb(
+        (int)(from.R + (to.R - from.R) * share),
+        (int)(from.G + (to.G - from.G) * share),
+        (int)(from.B + (to.B - from.B) * share));
+
+    /// <summary>
+    /// One step of a critically damped spring. It keeps its speed when the target changes, so a new
+    /// reading bends the motion instead of restarting it, and a once-a-second sensor never shows a pause.
+    /// </summary>
+    public static (double Shown, double Speed) GaugeStep(double shown, double speed, double target, double seconds)
+    {
+        var offset = shown - target;
+        var push = (speed + GaugeSpringRate * offset) * seconds;
+        var decay = Math.Exp(-GaugeSpringRate * seconds);
+        return (target + (offset + push) * decay, (speed - GaugeSpringRate * push) * decay);
+    }
+
+    double EasedShare(int index, ElementSpec element, double target)
+    {
+        var key = (index, element.Metric);
+        var (shown, speed) = _gaugeValues.TryGetValue(key, out var last) ? last : (target, 0);
+        // A settled theme redraws rarely, so the frame after a pause must not count that pause as motion.
+        (shown, speed) = GaugeStep(shown, speed, target, Math.Min(_frameSeconds, GaugeLongestStep));
+        if (Math.Abs(target - shown) < GaugeSettledShare && Math.Abs(speed) < GaugeSettledSpeed) (shown, speed) = (target, 0);
+        else IsAnimating = true;
+        _gaugeValues[key] = (shown, speed);
+        return shown;
+    }
+
+    /// <summary>The ring fills with the stat, and its color at the tip shows how high the stat is.</summary>
+    void DrawGauge(Graphics g, int index, ElementSpec element, Stats stats)
+    {
+        var size = Math.Max(element.Size, 40f);
+        var thickness = Math.Clamp(element.Thickness, 2f, size / 3);
+        var sweep = Math.Clamp(Math.Abs(element.Sweep), 10f, 360f);
+        var direction = element.Sweep < 0 ? -1f : 1f; // a negative sweep runs counterclockwise
+        var ring = new RectangleF(element.X - size / 2 + thickness / 2, element.Y - size / 2 + thickness / 2, size - thickness, size - thickness);
+
+        var radius = ring.Width / 2;
+        var degreesPerPixel = 180 / (MathF.PI * Math.Max(radius, 1));
+        var from = ParseColor(element.Color, Color.Cyan);
+        var to = ParseColor(element.EndColor, from);
+        var trackBase = ParseColor(element.TrackColor, Color.FromArgb(42, 42, 46));
+        Color Shade(float angle) => Blend(from, to, angle / sweep);
+        Color Track(float angle) => Blend(trackBase, Shade(angle), TrackTint);
+
+        // Angles here are measured along the gauge from its start, in the gauge's own direction.
+        void Cap(Color color, float angle, float diameter)
+        {
+            var radians = (element.StartAngle + direction * angle) * MathF.PI / 180;
+            var center = new PointF(element.X + radius * MathF.Cos(radians), element.Y + radius * MathF.Sin(radians));
+            using var brush = new SolidBrush(color);
+            g.FillEllipse(brush, center.X - diameter / 2, center.Y - diameter / 2, diameter, diameter);
+        }
+
+        // One long wide arc leaves a spike at its end, and round pen caps come out jagged,
+        // so every arc is built from short pieces and its ends are drawn as circles.
+        void Arc(float start, float end, float pieceDegrees, Func<float, Color> color, float width)
+        {
+            for (var angle = start; angle < end; angle += pieceDegrees)
+            {
+                using var pen = new Pen(color(angle), width);
+                var piece = Math.Min(pieceDegrees, end - angle) + 0.4f; // the overlap hides seams
+                g.DrawArc(pen, ring, element.StartAngle + direction * angle, direction * piece);
+            }
+        }
+
+        // The last of the track narrows to nothing, so nothing pops out of view near the top of the range.
+        void TrackFrom(float start)
+        {
+            if (start >= sweep) return;
+            var width = thickness * Math.Min((sweep - start) / (thickness * degreesPerPixel), 1);
+            Arc(start, sweep, TrackStepDegrees, Track, width);
+            Cap(Track(start), start, width);
+            Cap(Track(sweep), sweep, width);
+        }
+
+        if (stats.Get(element.Metric) is not { State: ReadingState.Ok, Value: { } value })
+        {
+            _gaugeValues.Remove((index, element.Metric));
+            TrackFrom(0);
+            return;
+        }
+
+        var filled = (float)EasedShare(index, element, GaugeShare(value, element.Min, element.Max)) * sweep;
+
+        // Past the rounded tip comes a gap, a separate dot, another gap, and then the unfilled track.
+        var dotDiameter = thickness * GaugeDotShare;
+        var gap = thickness * GaugeGapShare;
+        var dotAngle = filled + (thickness / 2 + gap + dotDiameter / 2) * degreesPerPixel;
+        var trackStart = dotAngle + (dotDiameter / 2 + gap + thickness / 2) * degreesPerPixel;
+        TrackFrom(element.Dot ? trackStart : filled);
+        var dotRoom = (sweep - dotAngle) / (dotDiameter * degreesPerPixel);
+        if (element.Dot && dotRoom > 0) Cap(Shade(dotAngle), dotAngle, dotDiameter * Math.Min(dotRoom, 1));
+
+        Cap(from, 0, thickness);
+        Arc(0, filled, GaugeStepDegrees, Shade, thickness);
+        Cap(Shade(filled), filled, thickness);
+    }
+
+    /// <summary>A pill that fills from its left end. Rotation points it any way, and 180 fills it right to left.</summary>
+    void DrawBar(Graphics g, int index, ElementSpec element, Stats stats)
+    {
+        var length = Math.Max(element.Size, MinCaptureSize);
+        var height = Math.Clamp(element.Thickness, MinBarThickness, length);
+        var box = new RectangleF(-length / 2, -height / 2, length, height);
+        var radius = Math.Clamp(element.CornerRadius, 0, height / 2);
+        var saved = g.Save();
+        g.TranslateTransform(element.X, element.Y);
+        g.RotateTransform(element.Rotation);
+
+        using (var trackShape = RoundedBox(box, radius))
+        using (var track = new SolidBrush(ParseColor(element.TrackColor, Color.FromArgb(42, 42, 46))))
+            g.FillPath(track, trackShape);
+
+        if (stats.Get(element.Metric) is { State: ReadingState.Ok, Value: { } value })
+        {
+            var filled = (float)EasedShare(index, element, GaugeShare(value, element.Min, element.Max)) * length;
+            if (filled > 0)
+            {
+                var from = ParseColor(element.Color, Color.Cyan);
+                var fill = box with { Width = filled };
+                var corner = Math.Min(radius, filled / 2);
+                using var brush = new LinearGradientBrush(Inflated(box), from, ParseColor(element.EndColor, from), 0f);
+                using var shape = RoundedBox(fill, corner);
+                g.FillPath(brush, shape);
+                if (element.Stripes) DrawStripes(g, fill, corner);
+            }
+        }
+        else _gaugeValues.Remove((index, element.Metric));
+        g.Restore(saved);
+    }
+
+    /// <summary>Each stripe stops at the fill's edge. Near the rounded tip that edge curves in, so a stripe shrinks away.</summary>
+    static void DrawStripes(Graphics g, RectangleF fill, float radius)
+    {
+        using var pen = new Pen(Color.FromArgb(BarStripeAlpha, Color.Black), BarStripeWidth);
+        for (var x = fill.Left + BarStripeSpacing; x < fill.Right; x += BarStripeSpacing)
+        {
+            var intoCorner = Math.Max(fill.Left + radius - x, x - (fill.Right - radius));
+            var trim = intoCorner > 0 ? radius - MathF.Sqrt(Math.Max(radius * radius - intoCorner * intoCorner, 0)) : 0;
+            g.DrawLine(pen, x, fill.Top + trim, x, fill.Bottom - trim);
+        }
+    }
+
+    /// <summary>A gradient repeats past its edges, so its box runs just wider than the shape.</summary>
+    static RectangleF Inflated(RectangleF box) => RectangleF.Inflate(box, 1, 1);
+
+    /// <summary>Lines and arcs are filled outlines, because wide pens leave jagged ends.</summary>
+    static void DrawShape(Graphics g, ElementSpec element)
+    {
+        var width = Math.Max(element.Size, MinShapeSize);
+        var stroked = element.Shape is ShapeKind.Line or ShapeKind.Arc;
+        var thickness = Math.Max(element.Thickness, MinShapeSize);
+        var height = element.Shape switch { ShapeKind.Line => thickness, ShapeKind.Arc => width, _ => Math.Max(element.Height, MinShapeSize) };
+        var box = new RectangleF(-width / 2, -height / 2, width, height);
+
+        using var place = new Matrix();
+        place.Translate(element.X, element.Y);
+        place.Rotate(element.Rotation);
+        using var path = ShapePath(element, box, thickness);
+        path.Transform(place);
+
+        if (element.Shadow) DrawShadow(g, path, element);
+        var alpha = (int)(Math.Clamp(element.Opacity, 0f, 1f) * 255);
+        if (element.Filled || stroked)
+        {
+            var color = Color.FromArgb(alpha, ParseColor(element.Color, Color.White));
+            using var solid = new SolidBrush(color);
+            using var fade = new LinearGradientBrush(Inflated(box), color, Color.FromArgb(alpha, ParseColor(element.EndColor, color)), 0f) { Transform = place };
+            g.FillPath(element.Gradient ? fade : solid, path);
+        }
+        if (element.Stroke && element.StrokeWidth > 0 && !stroked)
+        {
+            using var pen = new Pen(Color.FromArgb(alpha, ParseColor(element.StrokeColor, Color.Black)), element.StrokeWidth)
+            {
+                LineJoin = LineJoin.Round,
+                DashStyle = element.LineStyle switch { LineStyle.Dashed => DashStyle.Dash, LineStyle.Dotted => DashStyle.Dot, _ => DashStyle.Solid },
+            };
+            g.DrawPath(pen, path);
+        }
+    }
+
+    static GraphicsPath ShapePath(ElementSpec element, RectangleF box, float thickness)
+    {
+        var path = new GraphicsPath(FillMode.Winding);
+        switch (element.Shape)
+        {
+            case ShapeKind.Line: AddLine(path, box, element.LineStyle); break;
+            case ShapeKind.Arc: AddArcBand(path, box, Math.Min(thickness, box.Width / 2), element.StartAngle, Math.Clamp(element.Sweep, -360f, 360f)); break;
+            case ShapeKind.Ellipse: path.AddEllipse(box); break;
+            case ShapeKind.Rectangle: AddRoundedBox(path, box, element.CornerRadius); break;
+            case ShapeKind.Triangle: path.AddPolygon(new PointF[] { new(0, box.Top), new(box.Right, box.Bottom), new(box.Left, box.Bottom) }); break;
+            case ShapeKind.Diamond: path.AddPolygon(PointsAround(box, 4, 1)); break;
+            case ShapeKind.Hexagon: path.AddPolygon(PointsAround(box, 6, 1)); break;
+            default: path.AddPolygon(PointsAround(box, 10, StarInnerShare)); break;
+        }
+        return path;
+    }
+
+    static void AddRoundedBox(GraphicsPath path, RectangleF box, float radius)
+    {
+        using var rounded = RoundedBox(box, Math.Clamp(radius, 0, Math.Min(box.Width, box.Height) / 2));
+        path.AddPath(rounded, false);
+    }
+
+    /// <summary>Points around the box, from the top. With an inner share, every second point sits closer in.</summary>
+    static PointF[] PointsAround(RectangleF box, int count, float innerShare) =>
+        Enumerable.Range(0, count).Select(i =>
+        {
+            var angle = i * 2 * MathF.PI / count - MathF.PI / 2;
+            var reach = i % 2 == 0 ? 1 : innerShare;
+            return new PointF(MathF.Cos(angle) * box.Width / 2 * reach, MathF.Sin(angle) * box.Height / 2 * reach);
+        }).ToArray();
+
+    static void AddLine(GraphicsPath path, RectangleF box, LineStyle style)
+    {
+        var thickness = box.Height;
+        if (style == LineStyle.Solid)
+        {
+            AddRoundedBox(path, box, thickness / 2);
+            return;
+        }
+        var dotted = style == LineStyle.Dotted;
+        var piece = dotted ? thickness : thickness * DashShare;
+        var gap = thickness * (dotted ? DotGapShare : DashGapShare);
+        var count = Math.Max((int)((box.Width + gap) / (piece + gap)), 1);
+        var left = box.Left + (box.Width - (count * piece + (count - 1) * gap)) / 2; // the pattern stays centered
+        for (var i = 0; i < count; i++, left += piece + gap)
+            AddRoundedBox(path, new RectangleF(left, box.Top, Math.Min(piece, box.Width), thickness), thickness / 2);
+    }
+
+    static void AddArcBand(GraphicsPath path, RectangleF box, float thickness, float start, float sweep)
+    {
+        var inner = RectangleF.Inflate(box, -thickness, -thickness);
+        path.AddArc(box, start, sweep);
+        if (inner.Width > 0) path.AddArc(inner, start + sweep, -sweep);
+        path.CloseFigure();
+        var middle = (box.Width - thickness) / 2;
+        foreach (var angle in new[] { start, start + sweep })
+        {
+            var radians = angle * MathF.PI / 180;
+            path.AddEllipse(middle * MathF.Cos(radians) - thickness / 2, middle * MathF.Sin(radians) - thickness / 2, thickness, thickness);
+        }
+    }
+
+    /// <summary>All text is a vector path, so enabling a stroke or shadow never shifts the letters.</summary>
+    void Draw(Graphics g, ElementSpec element, Stats stats, DateTime now)
+    {
+        var text = TextOf(element, stats, now);
+        if (text.Length == 0) return;
+
+        using var format = new StringFormat
+        {
+            Alignment = element.Align switch
+            {
+                TextAlign.Center => StringAlignment.Center,
+                TextAlign.Right => StringAlignment.Far,
+                _ => StringAlignment.Near,
+            },
+        };
+        var (family, style) = FontFor(element);
+        var size = Math.Clamp(element.Size, 8f, 300f);
+        using var path = new GraphicsPath();
+        if (element.Kind == ElementKind.Metric && text.EndsWith(Degree)) AddDegreeReading(path, text[..^1], element, family, style, size);
+        else path.AddString(text, family, (int)style, size, new PointF(element.X, element.Y), format);
+
+        if (element.Shadow) DrawShadow(g, path, element);
+        if (element.Stroke && element.StrokeWidth > 0)
+        {
+            // The outline is centered on the letter edge, and the fill covers its inner half.
+            using var pen = new Pen(ParseColor(element.StrokeColor, Color.Black), element.StrokeWidth * 2) { LineJoin = LineJoin.Round };
+            g.DrawPath(pen, path);
+        }
+        using var brush = new SolidBrush(ParseColor(element.Color, Color.White));
+        g.FillPath(brush, path);
+    }
+
+    /// <summary>A small raised degree sign. The number and sign align as one unit, so the pair stays centered.</summary>
+    static void AddDegreeReading(GraphicsPath path, string number, ElementSpec element, FontFamily family, FontStyle style, float size)
+    {
+        using var layout = new StringFormat(StringFormat.GenericDefault);
+        path.AddString(number, family, (int)style, size, new PointF(0, element.Y), layout);
+        var digits = path.GetBounds();
+
+        using var sign = new GraphicsPath();
+        sign.AddString(Degree, family, (int)style, size * DegreeShare, PointF.Empty, layout);
+        var ring = sign.GetBounds();
+        using var raise = new Matrix();
+        raise.Translate(digits.Right + size * DegreeGap - ring.Left, digits.Top - ring.Top);
+        sign.Transform(raise);
+        path.AddPath(sign, false);
+
+        var whole = path.GetBounds();
+        var left = element.Align switch
+        {
+            TextAlign.Center => element.X - (whole.Left + whole.Width / 2),
+            TextAlign.Right => element.X - whole.Right,
+            _ => element.X,
+        };
+        using var place = new Matrix();
+        place.Translate(left, 0);
+        path.Transform(place);
+    }
+
+    /// <summary>Blur is built from widening, faint outlines, which is cheap enough for every video frame.</summary>
+    static void DrawShadow(Graphics g, GraphicsPath text, ElementSpec element)
+    {
+        var color = ParseColor(element.ShadowColor, Color.Black);
+        using var shadow = (GraphicsPath)text.Clone();
+        using var offset = new Matrix();
+        offset.Translate(element.ShadowX, element.ShadowY);
+        shadow.Transform(offset);
+
+        var blur = Math.Max(element.ShadowBlur, 0);
+        var steps = Math.Min((int)Math.Ceiling(blur), MaxBlurSteps);
+        var alpha = steps == 0 ? 255 : Math.Max(ShadowStrength / (steps + 1), 12);
+        using var brush = new SolidBrush(Color.FromArgb(alpha, color));
+        for (var step = steps; step > 0; step--)
+        {
+            using var pen = new Pen(brush, blur * 2 * step / steps) { LineJoin = LineJoin.Round };
+            g.DrawPath(pen, shadow);
+        }
+        g.FillPath(brush, shadow);
+    }
+
+    (FontFamily Family, FontStyle Style) FontFor(ElementSpec element)
+    {
+        var key = (element.FontFamily ?? "", element.Bold, element.Italic);
+        if (_fonts.TryGetValue(key, out var font)) return font;
+
+        var name = string.IsNullOrWhiteSpace(element.FontFamily) ? "Segoe UI" : element.FontFamily;
+        var bold = element.Bold;
+        if (bold && name == "Segoe UI")
+        {
+            name = "Segoe UI Semibold"; // the system font's preferred display weight
+            bold = false;
+        }
+        var style = (bold ? FontStyle.Bold : FontStyle.Regular) | (element.Italic ? FontStyle.Italic : FontStyle.Regular);
+        var family = OpenFamily(name);
+        font = (family, FirstAvailable(family, style));
+        _fonts[key] = font;
+        return font;
+    }
+
+    /// <summary>A theme can name a font that was since uninstalled.</summary>
+    static FontFamily OpenFamily(string name)
+    {
+        try { return new FontFamily(name); }
+        catch (ArgumentException) { return new FontFamily(GenericFontFamilies.SansSerif); }
+    }
+
+    /// <summary>Some fonts only ship certain styles, and asking for a missing one throws.</summary>
+    static FontStyle FirstAvailable(FontFamily family, FontStyle wanted)
+    {
+        FontStyle[] options = [wanted, FontStyle.Regular, FontStyle.Bold, FontStyle.Italic, FontStyle.Bold | FontStyle.Italic];
+        return options.FirstOrDefault(family.IsStyleAvailable, wanted);
+    }
+
+    public static Color ParseColor(string? text, Color fallback)
+    {
+        try { return string.IsNullOrWhiteSpace(text) ? fallback : ColorTranslator.FromHtml(text); }
+        catch (Exception e) when (e is ArgumentException or FormatException) { return fallback; }
+    }
+
+    public void Dispose()
+    {
+        _canvas.Dispose();
+        _fadeFrom?.Dispose();
+        foreach (var capture in _captures.Values) capture.Dispose();
+        foreach (var (family, _) in _fonts.Values) family.Dispose();
+    }
+}

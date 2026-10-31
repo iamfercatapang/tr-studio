@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'">
+  <title>Thermalright Studio</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <h1>Thermalright Studio</h1>
+      <p id="modelName"></p>
+    </div>
+    <nav aria-label="Main">
+      <span class="nav-indicator" id="navIndicator"></span>
+      <button class="nav-item" data-page="metrics" data-icon="Metrics">Metrics</button>
+      <button class="nav-item" data-page="themes" data-icon="Themes">Themes</button>
+      <button class="nav-item" data-page="editor" data-icon="Editor">Editor</button>
+    </nav>
+    <div class="status" id="status" role="status">
+      <span class="status-dot"></span><span id="statusText">Starting</span>
+    </div>
+  </aside>
+
+  <main>
+    <section class="page" id="page-metrics" aria-labelledby="metricsTitle">
+      <header class="page-header section-header">
+        <h2 id="metricsTitle">Metrics</h2>
+        <button id="resetPanels" hidden>Reset Layout</button>
+      </header>
+      <div class="metric-grid" id="metrics"></div>
+    </section>
+
+    <section class="page" id="page-themes" aria-labelledby="themesTitle" hidden>
+      <header class="page-header"><h2 id="themesTitle">Themes</h2></header>
+      <div class="hero">
+        <div class="screen"><img id="livePreview" alt="Live view of the cooler screen"></div>
+        <div class="hero-side">
+          <div class="field rotation" id="rotation"></div>
+          <div class="screen-options" id="screenOptions"></div>
+        </div>
+      </div>
+      <section class="playlist" aria-labelledby="playlistTitle">
+        <div class="section-header">
+          <h3 id="playlistTitle">Theme Playlist</h3>
+          <label class="switch playlist-switch"><span class="visually-hidden">Play the themes in turn</span><input id="playlistOn" type="checkbox" role="switch"></label>
+        </div>
+        <div class="playlist-body">
+          <ol class="playlist-list" id="playlistList"></ol>
+          <div class="playlist-controls">
+            <label class="field"><span>Add a Theme</span><select id="playlistAdd"></select></label>
+            <label class="field"><span>Switch Every<output id="playlistTime"></output></span><input id="playlistSeconds" type="range" min="5" max="600" step="5"></label>
+          </div>
+        </div>
+      </section>
+      <div class="section-header">
+        <h3>Your Themes</h3>
+        <div class="toolbar-group">
+          <button id="restoreDefaults" hidden>Restore Default Themes</button>
+          <button id="importTheme">Import Theme…</button>
+        </div>
+      </div>
+      <div class="theme-grid" id="themeGrid"></div>
+    </section>
+
+    <section class="page" id="page-editor" aria-labelledby="editorTitle" hidden>
+      <header class="toolbar">
+        <h2 id="editorTitle" class="visually-hidden">Editor</h2>
+        <input id="themeName" class="name-field" aria-label="Theme name" maxlength="60">
+        <div class="toolbar-group">
+          <button id="undo" class="icon-only" title="Undo (Ctrl+Z)" aria-label="Undo"><svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6.5h7a3.5 3.5 0 0 1 0 7H6"/><path d="M5.5 3.5l-3 3 3 3"/></svg></button>
+          <button id="redo" class="icon-only" title="Redo (Ctrl+Y)" aria-label="Redo"><svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M13 6.5H6a3.5 3.5 0 0 0 0 7h4"/><path d="M10.5 3.5l3 3-3 3"/></svg></button>
+          <button id="saveAs" hidden>Save As…</button>
+          <button id="save" class="primary">Save</button>
+        </div>
+      </header>
+      <div class="workspace">
+        <aside class="layers" aria-label="Layers">
+          <h3>Add</h3>
+          <div class="add-grid" role="group" aria-label="Add to the theme">
+            <button id="addStat" data-icon="Metric" aria-label="Add Stat">Stat</button>
+            <button id="addText" data-icon="Text" aria-label="Add Text">Text</button>
+            <button id="addClock" data-icon="Clock" aria-label="Add Clock">Clock</button>
+            <button id="addDate" data-icon="Date" aria-label="Add Date">Date</button>
+            <button id="addGauge" data-icon="Gauge" aria-label="Add Gauge">Gauge</button>
+            <button id="addBar" data-icon="Bar" aria-label="Add Bar">Bar</button>
+            <button id="addShape" data-icon="Shape" aria-label="Add Shape">Shape</button>
+            <button id="addCapture" data-icon="Capture" aria-label="Add Picture-in-Picture" title="Show a live area of your desktop on the cooler">PiP</button>
+          </div>
+          <h3>Layers</h3>
+          <div class="layer-list" id="layerList"></div>
+          <div class="layers-resizer" id="layersResizer" role="separator" aria-orientation="vertical" aria-label="Resize the Layers pane" aria-valuemin="160" aria-valuemax="340" tabindex="0" title="Drag to resize. Double-click to reset."></div>
+        </aside>
+        <div class="stage-area" id="stageArea">
+          <div class="stage" id="stage">
+            <img id="editPreview" alt="Editing preview of the cooler screen" draggable="false">
+            <div class="guide" id="guide" hidden></div>
+            <div class="guide horizontal" id="guideH" hidden></div>
+            <div id="handles"></div>
+          </div>
+        </div>
+        <aside class="inspector" id="inspector" aria-label="Properties"></aside>
+      </div>
+    </section>
+  </main>
+
+  <div class="picker" id="picker" role="dialog" aria-label="Choose a color" hidden>
+    <div class="picker-area" id="pickerArea"><span class="picker-thumb" id="pickerThumb"></span></div>
+    <input class="picker-hue" id="pickerHue" type="range" min="0" max="360" step="1" aria-label="Hue">
+    <div class="picker-row">
+      <span class="swatch large" id="pickerPreview"></span>
+      <input id="pickerHex" type="text" maxlength="7" spellcheck="false" aria-label="Hex color">
+    </div>
+    <button id="pickScreen" class="wide">Pick From Screen</button>
+    <p class="hint" id="pickerHint" hidden>Click anywhere to take a color. Press Esc to cancel.</p>
+    <div class="picker-section" id="recentSection">
+      <span class="picker-label">Recent</span>
+      <div class="picker-swatches" id="recentSwatches"></div>
+    </div>
+    <div class="picker-section">
+      <label class="picker-label" for="paletteSelect">Palette</label>
+      <select id="paletteSelect"></select>
+      <div class="picker-swatches" id="pickerSwatches"></div>
+      <button id="paletteAdd" class="wide">Add Current Color</button>
+      <p class="hint" id="paletteHint">Right-click a color to remove it.</p>
+      <label class="switch picker-switch"><span>Blend With Theme</span><input id="paletteBlend" type="checkbox" role="switch"></label>
+      <button id="paletteApply" class="wide">Apply to Theme</button>
+      <div class="palette-actions">
+        <button id="paletteNew">New</button>
+        <button id="paletteImport">Import</button>
+        <button id="paletteExport">Export</button>
+        <button id="paletteDelete" class="danger">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <svg class="visually-hidden" aria-hidden="true">
+    <defs>
+      <linearGradient id="ringHeat">
+        <stop offset="0" stop-color="#22e5e8"/>
+        <stop offset="0.4" stop-color="#30d158"/>
+        <stop offset="0.72" stop-color="#ff9f0a"/>
+        <stop offset="1" stop-color="#ff453a"/>
+      </linearGradient>
+      <linearGradient id="ringLoad">
+        <stop offset="0" stop-color="#22e5e8"/>
+        <stop offset="1" stop-color="#a855f7"/>
+      </linearGradient>
+      <linearGradient id="ringCool">
+        <stop offset="0" stop-color="#22e5e8"/>
+        <stop offset="1" stop-color="#0a84ff"/>
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <div class="loader" id="loader" role="status">
+    <span class="spinner"></span>
+    <p>Reading sensors…</p>
+  </div>
+
+  <dialog id="saveAsDialog">
+    <form id="saveAsForm" method="dialog">
+      <h3>Save As</h3>
+      <p>The original theme stays as it was last saved.</p>
+      <label class="field"><span>Theme Name</span><input id="saveAsName" type="text" maxlength="60" required></label>
+      <div class="dialog-actions">
+        <button type="button" id="saveAsCancel">Cancel</button>
+        <button type="submit" class="primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="paletteDialog">
+    <form id="paletteForm" method="dialog">
+      <h3>New Palette</h3>
+      <p>It starts with the color you have now. Add more with Add Current Color.</p>
+      <label class="field"><span>Palette Name</span><input id="paletteName" type="text" maxlength="40" required></label>
+      <div class="dialog-actions">
+        <button type="button" id="paletteCancel">Cancel</button>
+        <button type="submit" class="primary">Create</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="confirm">
+    <h3 id="confirmTitle"></h3>
+    <p id="confirmBody"></p>
+    <div class="dialog-actions" id="confirmActions"></div>
+  </dialog>
+  <div class="toast" id="toast" role="alert" hidden></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
