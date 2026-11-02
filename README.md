@@ -26,9 +26,11 @@ A This PC tile lists your processor, graphics card, motherboard, memory, storage
 
 ### Themes
 
-TR Studio comes with built-in themes, including Halo, Twin Arc, Triple Ring, Stat Grid, Minimal Clock, Ember, Memory and Dual Bar. You can delete the ones you don't want and bring them back later. Themes export and import as `.tstheme` files with their images or video included, and the screen can be rotated in 90° steps.
+TR Studio comes with built-in themes, including Halo, Halo Duo Split, Twin Arc, Triple Ring, Stat Grid, Minimal Clock, Ember, Memory and Dual Bar. You can delete the ones you don't want and bring them back later. Themes export and import as `.tstheme` files with their images or video included, and the screen can be rotated in 90° steps.
 
-![The Themes page, with a live preview, the Theme Playlist and the theme gallery](docs/screenshots/themes.png)
+![The Themes page, with a live preview of the cooler, screen rotation and the Theme Playlist](docs/screenshots/themes.png)
+
+![The theme gallery, with the built-in themes and New Theme](docs/screenshots/theme-gallery.png)
 
 ### Theme Playlist
 
@@ -39,19 +41,25 @@ Pick 2 or 3 themes and the cooler cycles through them in the order you set, ever
 Everything you change in the Editor shows up on the cooler as you go. You can add:
 
 - Stats, text, clocks and dates
-- Ring gauges and bars
+- Ring gauges and bars. Turn off Track Color and they show their full gradient with a marker at the reading instead
 - Shapes and lines, in eight types, with rotation, gradients, opacity, outlines and dashed or dotted lines
 - Picture-in-Picture, which mirrors any part of your desktop onto the cooler live
 
 Backgrounds can be an image, GIF, video or solid color. Layers can be reordered by dragging and hidden, and the Layers pane can be resized. Text gets a choice of fonts, a stroke and a shadow. Snapping guides help line things up, undo and redo cover every change, and you can type an exact value into any slider or reset it to its default. There's Save and Save As, and the Editor warns you when something runs off the edge of a round screen.
 
-![The Editor, with Add tiles, the Layers list and a live preview of a theme](docs/screenshots/editor.png)
+![The Editor, with Add tiles, the Layers list, a live preview and a gauge's settings](docs/screenshots/editor.png)
 
 ### Color
 
 The color picker takes hex values, remembers recent colors, and has an eyedropper that works anywhere on your screen. It ships with 10 palettes of 10 colors each, and you can make your own and share them as `.tspalette` files.
 
 With Blend With Theme on, picking a palette color on a gauge also recolors its bar, its stats and its label, and works out a matching gradient. Apply to Theme colors the whole theme from a palette in one click. Stats are kept readable against the background automatically. This only works with solid color backgrounds, since the app can't measure a picture or video.
+
+![The color picker, with recent colors, the Ocean palette and Blend With Theme](docs/screenshots/color-picker.png)
+
+### Warnings
+
+TR Studio warns you if the AIO pump slows down or stops, or if the CPU or GPU gets too hot. You set each limit yourself on the Themes page, or turn a warning off. When a reading stays past its limit for a few seconds, the cooler screen shows the warning over your theme with a pulsing red ring, Windows shows a notification, and the app shows it in the sidebar. A sensor your PC doesn't report never sets one off.
 
 ### Smooth gauges
 
