@@ -1,79 +1,65 @@
 # TR Studio
 
-A modern Windows app for the screen on the Thermalright Core Vision 360 AIO cooler. It shows live system stats, themes, and images or video on the cooler, and replaces Thermalright's TRCC software.
+TR Studio runs the screen on the Thermalright Core Vision 360 AIO cooler. It puts live system stats, themes, images and video on the cooler, and it replaces Thermalright's own TRCC software.
 
-> **Unofficial.** TR Studio is an independent project. It is not made, endorsed or supported by Thermalright. Thermalright and Core Vision are their owner's trademarks.
+> TR Studio is an unofficial, independent project. Thermalright didn't make it and doesn't endorse or support it. Thermalright and Core Vision are their owner's trademarks.
 
 ![The TR Studio Metrics page, with live CPU, GPU, cooling and system stats](docs/screenshots/metrics.png)
 
 ## Why I built it
 
-The Core Vision 360 is great hardware, but the software it ships with let it down. TRCC was buggy and hard to use:
+I like the Core Vision 360, but TRCC kept getting in the way. It crashed and froze, the interface was confusing, and it sometimes showed wrong or stale numbers, which is a problem for a screen whose whole job is showing stats.
 
-- **It crashed and froze.**
-- **Its interface was confusing.**
-- **It showed wrong or stale data,** which defeats the point of a stats screen.
-
-So I built a replacement with three priorities: stay reliable, be easy to use, and show numbers you can trust. If a sensor can't be read, TR Studio shows a dash instead of a stale or made-up number.
+So I wrote my own. I wanted something that stays running, that's easy to find your way around, and that only shows numbers you can trust. When TR Studio can't read a sensor, it shows a dash.
 
 ## Features
 
 ### Metrics
 
-- Live dashboard for CPU, GPU, cooling and system stats, with ring gauges and bars
-- CPU and GPU temperature, load, power and clock, plus GPU hot spot and memory temperature
+The Metrics page is a live dashboard with ring gauges and bars. It covers:
+
+- CPU and GPU temperature, load, power and clock, plus the GPU's hot spot and memory temperature
 - AIO pump, CPU fan, case fan and GPU fan speeds
-- Memory load, in use, available and speed, and motherboard temperature
-- A **This PC** tile listing your processor, graphics card, motherboard, memory, storage and Windows version
-- Tiles you can drag into your own order
+- Memory load, how much is in use and available, memory speed, and motherboard temperature
+
+A This PC tile lists your processor, graphics card, motherboard, memory, storage and Windows version. You can drag the tiles into whatever order you like.
 
 ### Themes
 
-- Built-in themes, including Halo, Twin Arc, Triple Ring, Stat Grid, Minimal Clock, Ember, Memory and Dual Bar
-- Delete the defaults you don't want, and restore them at any time
-- Export and import themes as `.tstheme` files, with their media included
-- Screen rotation in 90° steps
+TR Studio comes with built-in themes, including Halo, Twin Arc, Triple Ring, Stat Grid, Minimal Clock, Ember, Memory and Dual Bar. You can delete the ones you don't want and bring them back later. Themes export and import as `.tstheme` files with their images or video included, and the screen can be rotated in 90° steps.
 
 ![The Themes page, with a live preview, the Theme Playlist and the theme gallery](docs/screenshots/themes.png)
 
 ### Theme Playlist
 
-- Choose 2 or 3 themes to show in turn, in the order you set
-- Switch every 5 seconds to 10 minutes, with a smooth crossfade between themes
-- Pauses while you're in the Editor
+Pick 2 or 3 themes and the cooler cycles through them in the order you set, every 5 seconds to 10 minutes, with a crossfade between each one. The playlist pauses while you're in the Editor.
 
 ### Editor
 
-- Live preview that also runs on the cooler as you edit
-- Add stats, text, clocks, dates, ring gauges, bars, shapes and lines
-- **Picture-in-Picture:** show any live area of your desktop on the cooler
-- Image, GIF and video backgrounds, or a solid color
-- Layers with drag to reorder, show and hide, and a resizable pane
-- Fonts, text stroke and shadow, snapping guides and full undo and redo
-- Shapes in eight types, with rotation, gradients, opacity, outlines and dashed or dotted lines
-- Save, Save As, and warnings when an item runs off a round screen
+Everything you change in the Editor shows up on the cooler as you go. You can add:
+
+- Stats, text, clocks and dates
+- Ring gauges and bars
+- Shapes and lines, in eight types, with rotation, gradients, opacity, outlines and dashed or dotted lines
+- Picture-in-Picture, which mirrors any part of your desktop onto the cooler live
+
+Backgrounds can be an image, GIF, video or solid color. Layers can be reordered by dragging and hidden, and the Layers pane can be resized. Text gets a choice of fonts, a stroke and a shadow. Snapping guides help line things up, undo and redo cover every change, and you can type an exact value into any slider or reset it to its default. There's Save and Save As, and the Editor warns you when something runs off the edge of a round screen.
 
 ![The Editor, with Add tiles, the Layers list and a live preview of a theme](docs/screenshots/editor.png)
 
 ### Color
 
-- Color picker with hex entry, recent colors and an eyedropper for anything on your screen
-- 10 built-in palettes of 10 colors each
-- Create your own palettes, and share them as `.tspalette` files
-- **Blend With Theme:** pick a palette swatch and the matching gauge, bar, stats and label all update together, with a gradient to suit
-- **Apply to Theme:** color the whole theme from a palette in one click
-- Stats keep a clear contrast against the background automatically (solid colors only, since pictures and video can't be measured)
+The color picker takes hex values, remembers recent colors, and has an eyedropper that works anywhere on your screen. It ships with 10 palettes of 10 colors each, and you can make your own and share them as `.tspalette` files.
+
+With Blend With Theme on, picking a palette color on a gauge also recolors its bar, its stats and its label, and works out a matching gradient. Apply to Theme colors the whole theme from a palette in one click. Stats are kept readable against the background automatically. This only works with solid color backgrounds, since the app can't measure a picture or video.
 
 ### Smooth gauges
 
-Gauges and bars glide between readings instead of stepping once a second, both on the cooler and in the app.
+Gauges and bars move smoothly between readings, both on the cooler and in the app, so they don't jump once a second.
 
 ### Reliability
 
-- Runs quietly in the system tray, and the cooler keeps working with the window closed
-- Pauses for PC sleep and reconnects on wake
-- Reconnects on its own if the cooler can't be reached
-- Optional start with Windows
+TR Studio sits in the system tray, and the cooler keeps working after you close the window. It pauses when the PC sleeps and picks up again on wake. If it loses the cooler, it keeps trying to reconnect. It can also start with Windows.
 
 ## Requirements
 
@@ -82,17 +68,17 @@ Gauges and bars glide between readings instead of stepping once a second, both o
 - [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/), which most PCs already have
 - A Thermalright Core Vision 360, USB ID `87AD:70DB`
 
-TRCC and TR Studio can't drive the screen at the same time, so close TRCC first.
+Only one app can drive the screen at a time, so close TRCC before you start TR Studio.
 
 ### Tested hardware
 
-So far TR Studio has only been tested on one PC, with a Core Vision 360 and its 480×480 screen. The device reports other screen sizes through the same protocol, and the app has code for them, but those are untested.
+I've only tested TR Studio on my own PC, with a Core Vision 360 and its 480×480 screen. The same protocol reports other screen sizes and the app has code for them, but I haven't been able to try any.
 
 ## Install
 
-Build the installer as shown below, then run `TRStudio-1.0.0-Setup.exe`. It isn't code-signed, so Windows SmartScreen may warn you. Choose **More info**, then **Run anyway**.
+Build the installer as described below, then run `TRStudio-<version>-Setup.exe`. It isn't code-signed, so Windows SmartScreen may warn you. Choose **More info**, then **Run anyway**.
 
-Uninstalling keeps your themes and settings in `C:\ProgramData\CoreVisionStudio`.
+If you uninstall, your themes and settings stay in `C:\ProgramData\CoreVisionStudio`.
 
 ## Build from source
 
@@ -106,16 +92,13 @@ dotnet build CoreVisionStudio.sln -c Release
 dotnet test tests/CoreVision.Engine.Tests
 ```
 
-To build the installer, you also need:
-
-- [Inno Setup 6](https://jrsoftware.org/isinfo.php)
-- `ffmpeg.exe` in `third-party/ffmpeg/`, from an [LGPL build](https://github.com/BtbN/FFmpeg-Builds/releases). It isn't kept in this repository.
+Building the installer also takes [Inno Setup 6](https://jrsoftware.org/isinfo.php), plus `ffmpeg.exe` from an [LGPL build](https://github.com/BtbN/FFmpeg-Builds/releases) placed in `third-party/ffmpeg/`. FFmpeg isn't stored in this repository.
 
 ```bash
 pwsh tools/BuildInstaller.ps1
 ```
 
-The installer is written to `artifacts/`.
+The installer ends up in `artifacts/`.
 
 ## How it works
 
@@ -128,8 +111,8 @@ The installer is written to `artifacts/`.
 | `installer/` | Inno Setup script |
 | `docs/PROTOCOL.md` | Notes on the screen's USB protocol |
 
-Some internal names, such as `CoreVision.App.exe`, come from the project's working title.
+A few internal names, like `CoreVision.App.exe`, come from the project's working title.
 
-Sensors are read with [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor), and video is decoded with [FFmpeg](https://ffmpeg.org/).
+[LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) reads the sensors, and [FFmpeg](https://ffmpeg.org/) decodes video.
 
-The interface uses the GothamSSm font if it's installed on your PC, and Segoe UI if not. The font isn't included.
+The interface uses the GothamSSm font when it's installed, and Segoe UI otherwise. The font isn't included.
