@@ -527,6 +527,28 @@ main { min-width: 0; height: 100vh; }
 .field { display: block; margin-bottom: 14px; font-size: 0.75rem; color: var(--text-secondary); }
 .field > span { display: flex; justify-content: space-between; margin-bottom: 5px; }
 .field output { color: var(--text); font-variant-numeric: tabular-nums; }
+.slider-value { display: flex; align-items: center; gap: 3px; color: var(--text); }
+.field .slider-value input.slider-number {
+  width: 52px; height: 24px;
+  padding: 0 6px;
+  border: 0; border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  appearance: textfield;
+}
+.field .slider-value input.slider-number::-webkit-inner-spin-button, .field .slider-value input.slider-number::-webkit-outer-spin-button { appearance: none; margin: 0; }
+.field .slider-value input.slider-number:hover, .field .slider-value input.slider-number:focus { background: var(--surface-raised); }
+.slider-unit { min-width: 14px; font-size: 0.75rem; color: var(--text-secondary); }
+.slider-reset {
+  display: flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; padding: 0;
+  background: transparent;
+  color: var(--text-secondary);
+}
+.slider-reset .icon { width: 13px; height: 13px; }
+.slider-reset:disabled { opacity: 0.3; }
 .position { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .field input[type="number"] {
   width: 100%; height: 32px;

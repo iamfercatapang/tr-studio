@@ -62,6 +62,8 @@ const NEW_SHAPE = {
   kind: 'Shape', x: 240, y: 240, size: 160, height: 120, shape: 'Rectangle', lineStyle: 'Solid', thickness: 6, cornerRadius: 0, rotation: 0,
   startAngle: 135, sweep: 270, filled: true, gradient: false, color: '#0A84FF', endColor: '#BF5AF2', opacity: 1,
 };
+const NEW_CAPTURE = { size: 240, cornerRadius: 16 };
+const NEW_TEXT_SIZE = 40;
 const MIN_HANDLE = 16;
 /* Line drawings on a 16 unit grid. Shapes and layer kinds go by their own names. */
 const ICONS = {
@@ -90,6 +92,7 @@ const ICONS = {
   GraphicsCard: '<rect x="1.5" y="3.5" width="13" height="8" rx="1.5"/><circle cx="5.25" cy="7.5" r="2"/><circle cx="10.75" cy="7.5" r="2"/><path d="M3.5 11.5v2M7 11.5v2"/>',
   Fan: '<circle cx="8" cy="8" r="6.5"/><circle cx="8" cy="8" r="1"/><path d="M8 7c-1.6-1.4-1.6-3.4 0-4 1.8-.4 2.8 1.4 1.8 3M8.9 8.5c2-.6 3.8.3 3.5 2-.6 1.7-2.7 1.8-3.6.3M7.1 8.5c-.4 2.1-2.1 3.2-3.4 2-1.2-1.3-.2-3.2 1.6-3.2"/>',
   MemoryStick: '<rect x="1.5" y="4" width="13" height="7" rx="1"/><path d="M4.5 6.5v2M8 6.5v2M11.5 6.5v2M4 11v2M8 11v2M12 11v2"/>',
+  Reset: '<path d="M2.75 8a5.25 5.25 0 1 0 1.55-3.7"/><path d="M2.5 2v3h3"/>',
   Up: '<path d="M8 13V3M3.5 7.5L8 3l4.5 4.5"/>',
   Down: '<path d="M8 3v10M3.5 8.5L8 13l4.5-4.5"/>',
   Remove: '<path d="M4 4l8 8M12 4l-8 8"/>',
@@ -991,7 +994,7 @@ function settleInside(item, handle) {
 function addElement(spec) {
   remember();
   app.draft.elements.push({
-    x: 240, y: 200, size: 40, color: '#FFFFFF', align: 'Center', bold: false, italic: false,
+    x: 240, y: 200, size: NEW_TEXT_SIZE, color: '#FFFFFF', align: 'Center', bold: false, italic: false,
     fontFamily: DEFAULT_FONT, format: 'HH:mm', metric: 'CpuTemp',
     stroke: false, strokeColor: '#000000', strokeWidth: 2,
     shadow: false, shadowColor: '#000000', shadowX: 2, shadowY: 2, shadowBlur: 6,
@@ -1017,18 +1020,59 @@ function field(label, control, valueNode) {
   return element('label', { className: 'field' }, title, control);
 }
 
-/* Every slider records one undo step per gesture, not one per pixel. */
-function slider(label, value, min, max, step, format, apply) {
-  const output = element('output', { textContent: format(value) });
-  const input = element('input', { type: 'range', min, max, step, value });
-  input.addEventListener('pointerdown', remember);
-  input.addEventListener('keydown', remember, { once: true });
-  input.addEventListener('input', () => {
-    output.textContent = format(Number(input.value));
-    apply(Number(input.value));
+const SLIDER_DECIMALS = 2;
+const tidyNumber = (value) => Number(value.toFixed(SLIDER_DECIMALS));
+
+/*
+ * Every slider records one undo step per gesture, not one per pixel. Its value can also be typed,
+ * past the slider's own steps but not its range, and Reset puts back what a new item starts with.
+ */
+function slider(label, value, { min, max, step, unit = '', reset }, apply) {
+  let current = tidyNumber(value);
+  const range = element('input', { type: 'range', min, max, step, value: current });
+  const number = element('input', { type: 'number', className: 'slider-number', min, max, step: 'any', value: current });
+  const resetButton = element('button', { type: 'button', className: 'slider-reset', title: `Reset to ${reset}${unit}` }, icon('Reset'));
+  range.setAttribute('aria-label', label);
+  number.setAttribute('aria-label', `${label}${unit ? ` in ${unit.trim()}` : ''}`);
+  resetButton.setAttribute('aria-label', `Reset ${label} to ${reset}${unit}`);
+
+  const show = (next) => {
+    current = tidyNumber(next);
+    range.value = current;
+    number.value = current;
+    resetButton.disabled = current === reset;
+  };
+  const set = (next) => {
+    show(next);
+    apply(current);
     changed();
+  };
+  show(current);
+
+  range.addEventListener('pointerdown', remember);
+  range.addEventListener('keydown', remember, { once: true });
+  range.addEventListener('input', () => set(Number(range.value)));
+  number.addEventListener('change', () => {
+    const typed = Number(number.value);
+    if (number.value.trim() === '' || !Number.isFinite(typed)) { show(current); return; }
+    const next = tidyNumber(Math.min(max, Math.max(min, typed)));
+    if (next === current) { show(current); return; }
+    remember();
+    set(next);
   });
-  return field(label, input, output);
+  number.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') number.blur();
+    if (event.key === 'Escape') { show(current); number.blur(); event.stopPropagation(); }
+  });
+  resetButton.addEventListener('click', () => {
+    remember();
+    set(reset);
+  });
+
+  const readout = element('span', { className: 'slider-value' }, number);
+  if (unit) readout.append(element('span', { className: 'slider-unit', textContent: unit.trim() }));
+  readout.append(resetButton);
+  return element('div', { className: 'field' }, element('span', { textContent: label }, readout), range);
 }
 
 function colorField(label, value, apply) {
@@ -1539,7 +1583,7 @@ function strokeControls(item) {
   const controls = [toggle('Stroke', item.stroke, (value) => { item.stroke = value; })];
   if (item.stroke) {
     controls.push(
-      slider('Width', item.strokeWidth, 0.5, 12, 0.5, (v) => `${v} px`, (v) => { item.strokeWidth = v; }),
+      slider('Width', item.strokeWidth, { min: 0.5, max: 12, step: 0.5, unit: ' px', reset: 2 }, (v) => { item.strokeWidth = v; }),
       colorField('Stroke Color', item.strokeColor, (v) => { item.strokeColor = v; }));
   }
   return controls;
@@ -1549,9 +1593,9 @@ function shadowControls(item) {
   const controls = [toggle('Shadow', item.shadow, (value) => { item.shadow = value; })];
   if (item.shadow) {
     controls.push(
-      slider('Blur', item.shadowBlur, 0, 20, 1, (v) => `${v} px`, (v) => { item.shadowBlur = v; }),
-      slider('Horizontal Offset', item.shadowX, -20, 20, 1, (v) => `${v} px`, (v) => { item.shadowX = v; }),
-      slider('Vertical Offset', item.shadowY, -20, 20, 1, (v) => `${v} px`, (v) => { item.shadowY = v; }),
+      slider('Blur', item.shadowBlur, { min: 0, max: 20, step: 1, unit: ' px', reset: 6 }, (v) => { item.shadowBlur = v; }),
+      slider('Horizontal Offset', item.shadowX, { min: -20, max: 20, step: 1, unit: ' px', reset: 2 }, (v) => { item.shadowX = v; }),
+      slider('Vertical Offset', item.shadowY, { min: -20, max: 20, step: 1, unit: ' px', reset: 2 }, (v) => { item.shadowY = v; }),
       colorField('Shadow Color', item.shadowColor, (v) => { item.shadowColor = v; }));
   }
   return controls;
@@ -1603,14 +1647,14 @@ function gaugeRangeSliders(item) {
   const range = METRICS[item.metric] ?? { min: 0, max: 100 };
   const limit = Math.max(range.max * 1.5, item.max, item.min);
   const step = limit > 1000 ? 50 : 1;
-  const value = (v) => `${v}${range.unit ?? ''}`;
+  const unit = range.unit ?? '';
   return [
-    slider('Empty At', item.min, 0, limit, step, value, (v) => { item.min = v; }),
-    slider('Full At', item.max, 0, limit, step, value, (v) => { item.max = v; }),
+    slider('Empty At', item.min, { min: 0, max: limit, step, unit, reset: range.min }, (v) => { item.min = v; }),
+    slider('Full At', item.max, { min: 0, max: limit, step, unit, reset: range.max }, (v) => { item.max = v; }),
   ];
 }
 
-const rotationSlider = (item) => slider('Rotation', item.rotation ?? 0, 0, 360, 1, (v) => `${v}°`, (v) => { item.rotation = v; });
+const rotationSlider = (item) => slider('Rotation', item.rotation ?? 0, { min: 0, max: 360, step: 1, unit: '°', reset: 0 }, (v) => { item.rotation = v; });
 
 function gaugeControls(item) {
   const controls = [element('h3', { textContent: 'Gauge' }), gaugeStatField(item)];
@@ -1622,10 +1666,10 @@ function gaugeControls(item) {
     positionFields(item),
     centerButton(item),
     ...gaugeRangeSliders(item),
-    slider('Size', item.size, 80, SCREEN, 2, (v) => `${v} px`, (v) => { item.size = v; }),
-    slider('Thickness', item.thickness, 4, 48, 1, (v) => `${v} px`, (v) => { item.thickness = v; }),
-    slider('Start Angle', item.startAngle, 0, 360, 5, (v) => `${v}°`, (v) => { item.startAngle = v; }),
-    slider('Arc Length', Math.abs(item.sweep), 30, 360, 5, (v) => `${v}°`, (v) => { item.sweep = sign * v; }),
+    slider('Size', item.size, { min: 80, max: SCREEN, step: 2, unit: ' px', reset: NEW_GAUGE.size }, (v) => { item.size = v; }),
+    slider('Thickness', item.thickness, { min: 4, max: 48, step: 1, unit: ' px', reset: NEW_GAUGE.thickness }, (v) => { item.thickness = v; }),
+    slider('Start Angle', item.startAngle, { min: 0, max: 360, step: 5, unit: '°', reset: NEW_GAUGE.startAngle }, (v) => { item.startAngle = v; }),
+    slider('Arc Length', Math.abs(item.sweep), { min: 30, max: 360, step: 5, unit: '°', reset: NEW_GAUGE.sweep }, (v) => { item.sweep = sign * v; }),
     segmented('Fill Direction', ['Clockwise', 'Counterclockwise'], sign < 0 ? 'Counterclockwise' : 'Clockwise', (v) => {
       item.sweep = Math.abs(item.sweep) * (v === 'Clockwise' ? 1 : -1);
     }),
@@ -1646,9 +1690,9 @@ function barControls(item) {
     positionFields(item),
     centerButton(item),
     ...gaugeRangeSliders(item),
-    slider('Length', item.size, 40, SCREEN, 2, (v) => `${v} px`, (v) => { item.size = v; }),
-    slider('Thickness', item.thickness, 4, 60, 1, (v) => `${v} px`, (v) => { item.thickness = v; }),
-    slider('Corner Radius', Math.min(item.cornerRadius ?? 0, item.thickness / 2), 0, 30, 1, (v) => `${v} px`, (v) => { item.cornerRadius = v; }),
+    slider('Length', item.size, { min: 40, max: SCREEN, step: 2, unit: ' px', reset: NEW_BAR.size }, (v) => { item.size = v; }),
+    slider('Thickness', item.thickness, { min: 4, max: 60, step: 1, unit: ' px', reset: NEW_BAR.thickness }, (v) => { item.thickness = v; }),
+    slider('Corner Radius', Math.min(item.cornerRadius ?? 0, item.thickness / 2), { min: 0, max: 30, step: 1, unit: ' px', reset: NEW_BAR.cornerRadius }, (v) => { item.cornerRadius = v; }),
     rotationSlider(item),
     colorField('Low Color', item.color, (v) => { item.color = v; }),
     colorField('High Color', item.endColor, (v) => { item.endColor = v; }),
@@ -1671,20 +1715,20 @@ function shapeControls(item) {
   controls.push(
     positionFields(item),
     centerButton(item),
-    slider(isLine ? 'Length' : isArc ? 'Size' : 'Width', item.size, 4, SCREEN, 2, (v) => `${v} px`, (v) => { item.size = v; }));
+    slider(isLine ? 'Length' : isArc ? 'Size' : 'Width', item.size, { min: 4, max: SCREEN, step: 2, unit: ' px', reset: NEW_SHAPE.size }, (v) => { item.size = v; }));
   if (isLine || isArc) {
-    controls.push(slider('Thickness', item.thickness, 1, 60, 1, (v) => `${v} px`, (v) => { item.thickness = v; }));
+    controls.push(slider('Thickness', item.thickness, { min: 1, max: 60, step: 1, unit: ' px', reset: NEW_SHAPE.thickness }, (v) => { item.thickness = v; }));
   } else {
-    controls.push(slider('Height', item.height, 4, SCREEN, 2, (v) => `${v} px`, (v) => { item.height = v; }));
+    controls.push(slider('Height', item.height, { min: 4, max: SCREEN, step: 2, unit: ' px', reset: NEW_SHAPE.height }, (v) => { item.height = v; }));
   }
   if (isLine) controls.push(segmented('Line Style', LINE_STYLES, item.lineStyle, (v) => { item.lineStyle = v; }));
   if (isArc) {
     controls.push(
-      slider('Start Angle', item.startAngle, 0, 360, 5, (v) => `${v}°`, (v) => { item.startAngle = v; }),
-      slider('Arc Length', Math.abs(item.sweep), 10, 360, 5, (v) => `${v}°`, (v) => { item.sweep = v; }));
+      slider('Start Angle', item.startAngle, { min: 0, max: 360, step: 5, unit: '°', reset: NEW_SHAPE.startAngle }, (v) => { item.startAngle = v; }),
+      slider('Arc Length', Math.abs(item.sweep), { min: 10, max: 360, step: 5, unit: '°', reset: NEW_SHAPE.sweep }, (v) => { item.sweep = v; }));
   }
   if (item.shape === 'Rectangle') {
-    controls.push(slider('Corner Radius', item.cornerRadius ?? 0, 0, 240, 1, (v) => `${v} px`, (v) => { item.cornerRadius = v; }));
+    controls.push(slider('Corner Radius', item.cornerRadius ?? 0, { min: 0, max: 240, step: 1, unit: ' px', reset: NEW_SHAPE.cornerRadius }, (v) => { item.cornerRadius = v; }));
   }
   controls.push(rotationSlider(item));
   const painted = isLine || isArc || item.filled;
@@ -1695,7 +1739,7 @@ function shapeControls(item) {
       toggle('Gradient', item.gradient, (v) => { item.gradient = v; }));
     if (item.gradient) controls.push(colorField('End Color', item.endColor, (v) => { item.endColor = v; }));
   }
-  controls.push(slider('Opacity', Math.round((item.opacity ?? 1) * 100), 5, 100, 5, (v) => `${v}%`, (v) => { item.opacity = v / 100; }));
+  controls.push(slider('Opacity', Math.round((item.opacity ?? 1) * 100), { min: 5, max: 100, step: 5, unit: '%', reset: 100 }, (v) => { item.opacity = v / 100; }));
   const effects = [...shadowControls(item)];
   if (!isLine && !isArc) {
     effects.unshift(...strokeControls(item));
@@ -1724,8 +1768,8 @@ function captureControls(item) {
   controls.push(
     positionFields(item),
     centerButton(item),
-    slider('Size', item.size, 40, SCREEN, 2, (v) => `${v} px`, (v) => { item.size = v; }),
-    slider('Corner Radius', item.cornerRadius ?? 0, 0, 240, 2, (v) => `${v} px`, (v) => { item.cornerRadius = v; }),
+    slider('Size', item.size, { min: 40, max: SCREEN, step: 2, unit: ' px', reset: NEW_CAPTURE.size }, (v) => { item.size = v; }),
+    slider('Corner Radius', item.cornerRadius ?? 0, { min: 0, max: 240, step: 2, unit: ' px', reset: NEW_CAPTURE.cornerRadius }, (v) => { item.cornerRadius = v; }),
     element('button', { textContent: 'Delete', className: 'danger wide', onclick: removeSelected }));
   return controls;
 }
@@ -1762,7 +1806,7 @@ function elementControls(item) {
       onclick: () => { remember(); item.x = SCREEN / 2; item.align = 'Center'; renderInspector(); changed(); },
     }),
     ...fontControls(item),
-    slider('Size', item.size, 12, 160, 1, (v) => `${v} px`, (v) => { item.size = v; }),
+    slider('Size', item.size, { min: 12, max: 160, step: 1, unit: ' px', reset: NEW_TEXT_SIZE }, (v) => { item.size = v; }),
     colorField('Color', item.color, (v) => { item.color = v; }),
     segmented('Alignment', ['Left', 'Center', 'Right'], item.align ?? 'Left', (v) => { item.align = v; }),
     element('div', { className: 'inspector-group' }, ...strokeControls(item), ...shadowControls(item)),
@@ -1785,7 +1829,7 @@ function backgroundControls() {
         textContent: 'Use Plain Color', className: 'wide',
         onclick: () => { remember(); background.kind = 'Color'; background.path = null; app.draft.dim = 0; renderInspector(); changed(); },
       }));
-    controls.push(slider('Dim Background', app.draft.dim ?? 0, 0, 0.8, 0.05, (v) => `${Math.round(v * 100)}%`, (v) => { app.draft.dim = v; }));
+    controls.push(slider('Dim Background', Math.round((app.draft.dim ?? 0) * 100), { min: 0, max: 80, step: 5, unit: '%', reset: DEFAULT_MEDIA_DIM * 100 }, (v) => { app.draft.dim = v / 100; }));
   } else {
     controls.push(colorField('Color', background.color, (v) => { background.color = v; }));
   }
@@ -1910,7 +1954,7 @@ const handlers = {
     app.regionTarget = null;
     if (message.width === undefined || !app.draft) return;
     const area = { captureX: message.x, captureY: message.y, captureWidth: message.width, captureHeight: message.height };
-    if (adding) { addElement({ kind: 'Capture', x: SCREEN / 2, y: SCREEN / 2, size: 240, cornerRadius: 16, ...area }); return; }
+    if (adding) { addElement({ kind: 'Capture', x: SCREEN / 2, y: SCREEN / 2, ...NEW_CAPTURE, ...area }); return; }
     if (item?.kind !== 'Capture') return;
     remember();
     Object.assign(item, area);
