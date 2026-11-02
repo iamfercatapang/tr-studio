@@ -120,7 +120,7 @@ function state() {
     .filter((entry) => !removed.has(entry.path));
   theme = { ...theme };
   if (themes[0]) themes[0].thumb = render();
-  emit({ type: 'state', themes, current: theme, currentPath: window.mock.path, rotation: window.mock.rotation ?? 0, startup: window.mock.startup ?? false, removedDefaults: removed.size, playlist: window.mock.playlist ?? { enabled: false, paths: [], seconds: 30 }, screen: { width: screenWidth, height: screenHeight, round: screenWidth === 480, model: screenWidth === 480 ? 'Core Vision 360' : `${screenWidth}×${screenHeight} Screen` }, fonts: ['Arial', 'Consolas', 'Georgia', 'Impact', 'Segoe UI'], status: { state: 'Connected', text: 'Screen connected' } });
+  emit({ type: 'state', themes, current: theme, currentPath: window.mock.path, rotation: window.mock.rotation ?? 0, startup: window.mock.startup ?? false, removedDefaults: removed.size, playlist: window.mock.playlist ?? { enabled: false, paths: [], seconds: 30 }, alertSettings: window.mock.alertSettings, alerts: window.mock.alerts ?? [], screen: { width: screenWidth, height: screenHeight, round: screenWidth === 480, model: screenWidth === 480 ? 'Core Vision 360' : `${screenWidth}×${screenHeight} Screen` }, fonts: ['Arial', 'Consolas', 'Georgia', 'Impact', 'Segoe UI'], status: { state: 'Connected', text: 'Screen connected' } });
 }
 
 window.mock = { sent: [], path: null, saved, emit };
@@ -132,6 +132,7 @@ window.chrome.webview = {
     if (message.type === 'ready' || message.type === 'refresh') state();
     if (message.type === 'savePalettes') window.mock.palettes = message.palettes;
     if (message.type === 'playlist') window.mock.playlist = { enabled: message.enabled, paths: message.paths, seconds: message.seconds };
+    if (message.type === 'alerts') { const { type, ...settings } = message; window.mock.alertSettings = settings; }
     if (message.type === 'exportPalette') emit({ type: 'notice', message: 'Palette exported' });
     if (message.type === 'importPalette') emit({ type: 'palette', palette: { name: 'Essentials', colors: ['#112233', '#445566'] } });
     if (message.type === 'ready') {

@@ -96,10 +96,16 @@ const ICONS = {
   Up: '<path d="M8 13V3M3.5 7.5L8 3l4.5 4.5"/>',
   Down: '<path d="M8 3v10M3.5 8.5L8 13l4.5-4.5"/>',
   Remove: '<path d="M4 4l8 8M12 4l-8 8"/>',
+  Warning: '<path d="M8 2l6.5 11.5h-13z"/><path d="M8 6.5v3M8 11.5v.01"/>',
   Shown: '<path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/>',
   Hidden: '<path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z"/><path d="M3 13L13 3"/>',
 };
 const PLAYLIST = { minThemes: 2, maxThemes: 3 };
+const ALERT_RULES = [
+  { kind: 'Pump', on: 'pump', limit: 'pumpMinRpm', metric: 'PumpRpm', iconName: 'Fan', label: 'AIO Pump', limitLabel: 'Warn below', unit: 'RPM', min: 100, max: 3000, step: 50, fallback: 500 },
+  { kind: 'CpuTemp', on: 'cpuTemp', limit: 'cpuMaxTemp', metric: 'CpuTemp', iconName: 'Chip', label: 'CPU Temperature', limitLabel: 'Warn at', unit: '°C', min: 50, max: 110, step: 1, fallback: 90 },
+  { kind: 'GpuTemp', on: 'gpuTemp', limit: 'gpuMaxTemp', metric: 'GpuTemp', iconName: 'GraphicsCard', label: 'GPU Temperature', limitLabel: 'Warn at', unit: '°C', min: 50, max: 110, step: 1, fallback: 85 },
+];
 const SNAP_DISTANCE = 7;
 const DEFAULT_MEDIA_DIM = 0.35;
 const $ = (id) => document.getElementById(id);
@@ -113,6 +119,8 @@ const app = {
   screen: { width: SCREEN, height: SCREEN, round: true, model: '' },
   undo: [], redo: [], page: 'metrics',
   playlist: { enabled: false, paths: [], seconds: 30 },
+  alertSettings: Object.fromEntries(ALERT_RULES.flatMap((rule) => [[rule.on, true], [rule.limit, rule.fallback]])),
+  alerts: [],
 };
 
 if (!window.chrome?.webview) await import('/mock.js');
@@ -575,6 +583,79 @@ function renderPlaylist() {
   $('playlistSeconds').value = seconds;
   $('playlistTime').textContent = formatPlaylistTime(seconds);
   markShowingTheme();
+}
+
+/* Warnings */
+function saveAlertSettings() {
+  send({ type: 'alerts', ...app.alertSettings });
+}
+
+function alertRule(rule) {
+  const settings = app.alertSettings;
+  const on = settings[rule.on];
+  const input = element('input', { type: 'number', className: 'alert-limit', min: rule.min, max: rule.max, step: rule.step, value: settings[rule.limit], disabled: !on });
+  input.setAttribute('aria-label', `${rule.label}: ${rule.limitLabel} (${rule.unit})`);
+  const reset = element('button', {
+    className: 'slider-reset', title: `Reset to ${rule.fallback} ${rule.unit}`, disabled: !on || settings[rule.limit] === rule.fallback,
+    onclick: () => { settings[rule.limit] = rule.fallback; saveAlertSettings(); renderAlertRules(); },
+  }, icon('Reset'));
+  reset.setAttribute('aria-label', `Reset the ${rule.label} limit`);
+  input.addEventListener('change', () => {
+    const typed = Number(input.value);
+    const value = input.value !== '' && Number.isFinite(typed) ? Math.round(Math.min(rule.max, Math.max(rule.min, typed))) : settings[rule.limit];
+    input.value = value;
+    if (value === settings[rule.limit]) return;
+    settings[rule.limit] = value;
+    saveAlertSettings();
+    reset.disabled = value === rule.fallback;
+  });
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') input.blur();
+    if (event.key === 'Escape') { input.value = settings[rule.limit]; input.blur(); }
+  });
+  const toggle = plainToggle(rule.label, on, (enabled) => { settings[rule.on] = enabled; saveAlertSettings(); renderAlertRules(); });
+  toggle.classList.add('alert-switch');
+  toggle.firstChild.prepend(icon(rule.iconName));
+  const card = element('div', { className: 'alert-rule' }, toggle,
+    element('div', { className: 'alert-limit-row' },
+      element('span', { textContent: rule.limitLabel }),
+      element('span', { className: 'alert-input' }, input, element('span', { className: 'slider-unit', textContent: rule.unit }), reset)),
+    element('span', { className: 'alert-now' }));
+  card.dataset.kind = rule.kind;
+  card.classList.toggle('off', !on);
+  return card;
+}
+
+function renderAlertRules() {
+  $('alertRules').replaceChildren(...ALERT_RULES.map(alertRule));
+  renderAlertReadings();
+  markAlertRules();
+}
+
+/* A warning only works where the PC reports that reading, so each card says what it sees. */
+function renderAlertReadings() {
+  document.querySelectorAll('.alert-rule').forEach((card) => {
+    const rule = ALERT_RULES.find((entry) => entry.kind === card.dataset.kind);
+    const reading = app.stats[rule.metric];
+    card.querySelector('.alert-now').textContent = reading === null || reading === undefined
+      ? 'No reading on this PC, so this warning can’t show'
+      : `Now ${Math.round(reading).toLocaleString()} ${rule.unit}`;
+  });
+}
+
+function markAlertRules() {
+  document.querySelectorAll('.alert-rule').forEach((card) => {
+    card.classList.toggle('alerting', app.alerts.some((alert) => alert.kind === card.dataset.kind));
+  });
+}
+
+function renderAlertBanner() {
+  const banner = $('alertBanner');
+  banner.hidden = app.alerts.length === 0;
+  banner.replaceChildren(...app.alerts.map((alert) => element('p', {},
+    icon('Warning'),
+    element('span', {}, element('strong', { textContent: alert.title }), element('span', { textContent: alert.detail })))));
+  markAlertRules();
 }
 
 function plainToggle(label, value, apply) {
@@ -1908,6 +1989,10 @@ const handlers = {
     renderRotation();
     app.playlist = message.playlist ?? app.playlist;
     renderPlaylist();
+    if (message.alertSettings) app.alertSettings = message.alertSettings;
+    app.alerts = message.alerts ?? [];
+    renderAlertRules();
+    renderAlertBanner();
     renderThemes();
     setStatus(message.status);
     if (app.pendingEdit === 'saved') {
@@ -1930,7 +2015,12 @@ const handlers = {
     app.stats = message.stats;
     $(app.page === 'editor' ? 'editPreview' : 'livePreview').src = source;
     renderStats();
+    renderAlertReadings();
     trackLoading();
+  },
+  alerts(message) {
+    app.alerts = message.active;
+    renderAlertBanner();
   },
   media(message) {
     if (!app.draft) return;

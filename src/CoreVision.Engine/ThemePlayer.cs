@@ -17,6 +17,7 @@ public sealed class ThemePlayer : IDisposable
     volatile ScreenInfo _screen = ScreenInfo.Default;
     volatile bool _stopping;
     volatile int _rotation;
+    volatile IReadOnlyList<Alert> _alerts = [];
     int _fadePending;
     long _framesRendered;
 
@@ -42,6 +43,17 @@ public sealed class ThemePlayer : IDisposable
         set
         {
             _rotation = value is 90 or 180 or 270 ? value : 0;
+            _changed.Set();
+        }
+    }
+
+    /// <summary>Warnings cover whatever theme is playing until the list is empty again.</summary>
+    public IReadOnlyList<Alert> Alerts
+    {
+        get => _alerts;
+        set
+        {
+            _alerts = value;
             _changed.Set();
         }
     }
@@ -98,7 +110,7 @@ public sealed class ThemePlayer : IDisposable
                 try
                 {
                     if (Interlocked.Exchange(ref _fadePending, 0) == 1) renderer.BeginFade();
-                    var frame = renderer.Render(background, theme.Elements, _stats(), DateTime.Now, theme.Dim);
+                    var frame = renderer.Render(background, theme.Elements, _stats(), DateTime.Now, theme.Dim, _alerts);
                     var rotation = _rotation;
                     _submit(rotation == 0 ? frame : renderer.EncodeRotated(rotation));
                     FrameRendered?.Invoke(frame);

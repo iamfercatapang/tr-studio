@@ -131,6 +131,12 @@ sealed class MainWindow : Form
                     _app.SetPlaylist(new ThemePlaylist((bool?)message["enabled"] == true,
                         message["paths"]!.AsArray().Select(path => (string?)path).ToList(), (int?)message["seconds"] ?? ThemePlaylist.DefaultSeconds));
                     break;
+                case "alerts":
+                    _app.SetAlerts(new AlertSettings(
+                        (bool?)message["pump"] == true, (int?)message["pumpMinRpm"] ?? AlertSettings.DefaultPumpRpm,
+                        (bool?)message["cpuTemp"] == true, (int?)message["cpuMaxTemp"] ?? AlertSettings.DefaultCpuTemp,
+                        (bool?)message["gpuTemp"] == true, (int?)message["gpuMaxTemp"] ?? AlertSettings.DefaultGpuTemp));
+                    break;
                 case "pausePlaylist":
                     _app.PausePlaylist((bool?)message["paused"] == true);
                     break;

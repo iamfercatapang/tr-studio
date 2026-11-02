@@ -3,7 +3,8 @@ using CoreVision.Engine;
 
 namespace CoreVision.App;
 
-sealed record Settings(string? ThemePath = null, int Rotation = 0, bool PausedTrccStartup = false, ThemePlaylist? Playlist = null)
+sealed record Settings(string? ThemePath = null, int Rotation = 0, bool PausedTrccStartup = false, ThemePlaylist? Playlist = null,
+    AlertSettings? Alerts = null)
 {
     public static string DataFolder { get; } =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "CoreVisionStudio");

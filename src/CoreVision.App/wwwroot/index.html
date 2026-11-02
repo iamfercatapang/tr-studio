@@ -19,6 +19,7 @@
       <button class="nav-item" data-page="themes" data-icon="Themes">Themes</button>
       <button class="nav-item" data-page="editor" data-icon="Editor">Editor</button>
     </nav>
+    <div class="alert-banner" id="alertBanner" role="alert" hidden></div>
     <div class="status" id="status" role="status">
       <span class="status-dot"></span><span id="statusText">Starting</span>
     </div>
@@ -54,6 +55,11 @@
             <label class="field"><span>Switch Every<output id="playlistTime"></output></span><input id="playlistSeconds" type="range" min="5" max="600" step="5"></label>
           </div>
         </div>
+      </section>
+      <section class="alerts-panel" aria-labelledby="alertsTitle">
+        <div class="section-header"><h3 id="alertsTitle">Warnings</h3></div>
+        <p class="alerts-intro">When a reading stays past its limit for a few seconds, the cooler screen shows a warning over your theme and Windows shows a notification.</p>
+        <div class="alert-rules" id="alertRules"></div>
       </section>
       <div class="section-header">
         <h3>Your Themes</h3>

@@ -54,6 +54,13 @@ public sealed class ThemeRenderer : IDisposable
 
     const float MinCaptureSize = 20f;
     const double FadeSeconds = 0.8;
+    const int AlertScrimAlpha = 235;
+    const double AlertSecondsEach = 3;
+    const double AlertPulsesPerSecond = 1;
+    const float AlertRingWidth = 12f;
+    const float AlertRingInset = 14f;
+    static readonly Color AlertRed = Color.FromArgb(255, 59, 48);
+    static readonly Color AlertReading = Color.FromArgb(255, 120, 110);
 
     Bitmap? _fadeFrom;
     readonly Stopwatch _sinceFade = new();
@@ -68,7 +75,8 @@ public sealed class ThemeRenderer : IDisposable
 
     readonly Dictionary<(string Family, bool Bold, bool Italic), (FontFamily Family, FontStyle Style)> _fonts = [];
 
-    public byte[] Render(IBackground background, IReadOnlyList<ElementSpec> elements, Stats stats, DateTime now, float dim = 0)
+    public byte[] Render(IBackground background, IReadOnlyList<ElementSpec> elements, Stats stats, DateTime now, float dim = 0,
+        IReadOnlyList<Alert>? alerts = null)
     {
         using var g = Graphics.FromImage(_canvas);
         g.SmoothingMode = SmoothingMode.AntiAlias;
@@ -101,6 +109,7 @@ public sealed class ThemeRenderer : IDisposable
             _captures.Remove(key);
         }
         DrawFade(g);
+        if (alerts is { Count: > 0 }) DrawAlert(g, alerts, now, scale);
         return JpegFrame.Encode(_canvas, _quality);
     }
 
@@ -128,6 +137,55 @@ public sealed class ThemeRenderer : IDisposable
         attributes.SetColorMatrix(new ColorMatrix { Matrix33 = (float)(1 - eased) });
         g.ResetTransform();
         g.DrawImage(_fadeFrom, new Rectangle(Point.Empty, _canvas.Size), 0, 0, _canvas.Width, _canvas.Height, GraphicsUnit.Pixel, attributes);
+    }
+
+    /// <summary>
+    /// A warning covers the theme, so it reads from across the room. A pulsing red ring draws the eye,
+    /// and with more than one warning they take turns.
+    /// </summary>
+    void DrawAlert(Graphics g, IReadOnlyList<Alert> alerts, DateTime now, float scale)
+    {
+        IsAnimating = true;
+        var seconds = now.TimeOfDay.TotalSeconds;
+        var index = (int)(seconds / AlertSecondsEach) % alerts.Count;
+        var alert = alerts[index];
+
+        g.ResetTransform();
+        using (var scrim = new SolidBrush(Color.FromArgb(AlertScrimAlpha, Color.Black)))
+            g.FillRectangle(scrim, 0, 0, _canvas.Width, _canvas.Height);
+        g.TranslateTransform(_canvas.Width / 2f, _canvas.Height / 2f);
+        g.ScaleTransform(scale, scale);
+        g.TranslateTransform(-ScreenSize / 2f, -ScreenSize / 2f);
+
+        var pulse = 0.5 + 0.5 * Math.Sin(seconds * AlertPulsesPerSecond * 2 * Math.PI);
+        using (var ring = new Pen(Color.FromArgb((int)(170 + 85 * pulse), AlertRed), AlertRingWidth))
+        {
+            var size = ScreenSize - 2 * AlertRingInset;
+            g.DrawEllipse(ring, AlertRingInset, AlertRingInset, size, size);
+        }
+
+        using (var sign = new GraphicsPath())
+        using (var red = new SolidBrush(AlertRed))
+        {
+            sign.AddPolygon([new PointF(240, 110), new PointF(282, 182), new PointF(198, 182)]);
+            g.FillPath(red, sign);
+            using var mark = new SolidBrush(Color.Black);
+            g.FillRectangle(mark, 236, 132, 8, 28);
+            g.FillEllipse(mark, 235.5f, 165, 9, 9);
+        }
+
+        using var family = OpenFamily("Segoe UI");
+        using var centered = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+        void Text(string text, float size, float y, Color color)
+        {
+            using var path = new GraphicsPath();
+            path.AddString(text, family, (int)FontStyle.Bold, size, new PointF(240, y), centered);
+            using var brush = new SolidBrush(color);
+            g.FillPath(brush, path);
+        }
+        Text(alert.Title, 40, 232, Color.White);
+        Text(alert.Detail, 72, 305, AlertReading);
+        if (alerts.Count > 1) Text($"{index + 1} of {alerts.Count}", 20, 378, Color.FromArgb(170, 170, 176));
     }
 
     /// <summary>Where a capture sits on the 480 unit square. It keeps the shape of its desktop area.</summary>

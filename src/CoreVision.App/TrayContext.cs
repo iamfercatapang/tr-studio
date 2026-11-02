@@ -30,6 +30,10 @@ sealed class TrayContext : ApplicationContext
     readonly SynchronizationContext _ui = new WindowsFormsSynchronizationContext();
     readonly Stopwatch _sincePreview = Stopwatch.StartNew();
     readonly System.Windows.Forms.Timer _playlistTimer = new();
+    readonly System.Windows.Forms.Timer _alertTimer = new() { Interval = 1000 };
+    readonly AlertMonitor _alertMonitor = new();
+    IReadOnlyList<Alert> _alerts = [];
+    string _statusText = "Starting";
     bool _playlistPaused;
     MainWindow? _window;
     readonly Lazy<Task<IReadOnlyList<SpecRow>>> _specs;
@@ -62,6 +66,8 @@ sealed class TrayContext : ApplicationContext
         _player.Start();
         _playlistTimer.Tick += (_, _) => ShowNextInPlaylist();
         RestartPlaylist();
+        _alertTimer.Tick += (_, _) => CheckAlerts();
+        _alertTimer.Start();
 
         _link.StatusChanged += OnLinkStatus;
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
@@ -204,6 +210,52 @@ sealed class TrayContext : ApplicationContext
 
     public void PreviewTheme(Theme theme) => _player.Play(theme);
 
+    AlertSettings Alerts => (_settings.Alerts ?? new AlertSettings()).Clamped();
+
+    public void SetAlerts(AlertSettings alerts)
+    {
+        _settings = _settings with { Alerts = alerts.Clamped() };
+        SaveSettings();
+        CheckAlerts();
+    }
+
+    /// <summary>Runs every second. Windows gets one notification when a warning starts, not one a second.</summary>
+    void CheckAlerts()
+    {
+        var alerts = _alertMonitor.Check(_sensors.Current, Alerts, DateTime.UtcNow);
+        if (alerts.SequenceEqual(_alerts)) return;
+        foreach (var alert in alerts.Where(alert => _alerts.All(old => old.Kind != alert.Kind)))
+        {
+            Log($"Warning: {alert.Title} at {alert.Detail}");
+            _icon.ShowBalloonTip(10_000, NotificationTitle(alert), NotificationText(alert), ToolTipIcon.Warning);
+        }
+        foreach (var ended in _alerts.Where(old => alerts.All(alert => alert.Kind != old.Kind))) Log($"Warning over: {ended.Title}");
+        _alerts = alerts;
+        _player.Alerts = alerts;
+        ShowTrayText();
+        _window?.Post(new JsonObject { ["type"] = "alerts", ["active"] = ActiveAlertsJson() });
+    }
+
+    static string NotificationTitle(Alert alert) => alert.Kind switch
+    {
+        AlertKind.Pump => "Your AIO pump has slowed or stopped",
+        AlertKind.CpuTemp => "Your CPU is running hot",
+        _ => "Your GPU is running hot",
+    };
+
+    static string NotificationText(Alert alert) => alert.Kind switch
+    {
+        AlertKind.Pump => $"The pump reads {alert.Detail}. Save your work and check the cooler before the CPU overheats.",
+        _ => $"It's at {alert.Detail}, above the limit you set in TR Studio.",
+    };
+
+    JsonArray ActiveAlertsJson() => new(_alerts.Select(alert => (JsonNode?)new JsonObject
+    {
+        ["kind"] = alert.Kind.ToString(),
+        ["title"] = NotificationTitle(alert),
+        ["detail"] = alert.Detail,
+    }).ToArray());
+
     public void SetRotation(int degrees)
     {
         _player.Rotation = degrees;
@@ -317,6 +369,8 @@ sealed class TrayContext : ApplicationContext
         var status = _link.Status;
         var path = _settings.ThemePath;
         var playlist = Playlist;
+        var alertSettings = Alerts;
+        var activeAlerts = ActiveAlertsJson();
         Task.Run(() =>
         {
             var themes = new JsonArray();
@@ -342,6 +396,8 @@ sealed class TrayContext : ApplicationContext
                 ["rotation"] = _player.Rotation,
                 ["removedDefaults"] = _themes.RemovedDefaultCount,
                 ["playlist"] = JsonSerializer.SerializeToNode(playlist, PageJson),
+                ["alertSettings"] = JsonSerializer.SerializeToNode(alertSettings, PageJson),
+                ["alerts"] = activeAlerts,
                 ["screen"] = new JsonObject { ["width"] = screen.Width, ["height"] = screen.Height, ["round"] = screen.Round, ["model"] = screen.Model },
                 ["startup"] = WindowsStartup.IsEnabled(),
                 ["fonts"] = new JsonArray(InstalledFonts.Value.Select(name => (JsonNode?)name).ToArray()),
@@ -411,14 +467,22 @@ sealed class TrayContext : ApplicationContext
     {
         var text = StatusText(status);
         _statusItem.Text = text;
-        _icon.Text = text.Length > MaxTrayText ? text[..MaxTrayText] : text;
+        _statusText = text;
+        ShowTrayText();
         _window?.Post(new JsonObject { ["type"] = "status", ["status"] = StatusJson(status) });
+    }
+
+    void ShowTrayText()
+    {
+        var text = _alerts.Count > 0 ? $"Warning: {string.Join(", ", _alerts.Select(alert => $"{alert.Title} {alert.Detail}"))}" : _statusText;
+        _icon.Text = text.Length > MaxTrayText ? text[..MaxTrayText] : text;
     }
 
     protected override void Dispose(bool disposing)
     {
         if (disposing)
         {
+            _alertTimer.Dispose();
             SystemEvents.PowerModeChanged -= OnPowerModeChanged;
             _player.Dispose();
             _link.Dispose();
