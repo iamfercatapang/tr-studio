@@ -131,6 +131,29 @@ public sealed class ShapeTests
         Assert.False(IsLit(bitmap.GetPixel(240, 330)));
     }
 
+    [Fact]
+    public void Gauge_without_track_color_shows_its_gradient_past_the_reading()
+    {
+        // Starts at the top and runs clockwise, so a low reading leaves the left half unfilled.
+        var gauge = new ElementSpec(ElementKind.Gauge, 240, 240, 400) { Metric = Metric.CpuTemp, Min = 0, Max = 100, StartAngle = -90, Sweep = 360, Thickness = 30, Color = "#FF0000", EndColor = "#FF0000", TrackColor = "#00FF00", UseTrackColor = false };
+        using var bitmap = Render(gauge, StatsWith(20));
+
+        var unfilled = bitmap.GetPixel(55, 240);
+        Assert.True(unfilled.R > 180 && unfilled.G < 90, unfilled.ToString());
+    }
+
+    [Fact]
+    public void Bar_without_track_color_has_a_marker_at_the_reading_and_gradient_beyond()
+    {
+        var bar = new ElementSpec(ElementKind.Bar, 240, 240, 300) { Metric = Metric.CpuTemp, Min = 0, Max = 100, Thickness = 20, Color = "#FF0000", EndColor = "#FF0000", TrackColor = "#00FF00", UseTrackColor = false };
+        using var bitmap = Render(bar, StatsWith(50));
+
+        Assert.True(IsLit(bitmap.GetPixel(240, 227))); // the marker stands taller than the bar
+        Assert.False(IsLit(bitmap.GetPixel(200, 227)));
+        var beyond = bitmap.GetPixel(350, 240);
+        Assert.True(beyond.R > 180 && beyond.G < 90, beyond.ToString());
+    }
+
     [Theory]
     [InlineData(ShapeKind.Star)]
     [InlineData(ShapeKind.Arc)]

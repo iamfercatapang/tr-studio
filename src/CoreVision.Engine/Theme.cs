@@ -48,6 +48,8 @@ public sealed record ElementSpec(ElementKind Kind, float X, float Y, float Size)
     public string EndColor { get; init; } = "#BF5AF2";
     public string TrackColor { get; init; } = "#2A2A2E";
     public bool Dot { get; init; } = true;
+    /// <summary>Off draws the whole gauge or bar in its gradient, with a marker at the reading.</summary>
+    public bool UseTrackColor { get; init; } = true;
 
     // Capture: a live area of the desktop, in desktop pixels. X and Y are the center and Size is the width.
     public int CaptureX { get; init; }

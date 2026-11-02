@@ -33,6 +33,9 @@ public sealed class ThemeRenderer : IDisposable
     const float DegreeGap = 0.08f;
     const float TrackStepDegrees = 6f;
     const float TrackTint = 0.26f;
+    const float MarkerGrowthShare = 0.4f;
+    const float MinMarkerGrowth = 10f;
+    const float MarkerGapShare = 0.6f;
     const float GaugeDotShare = 0.8f;
     const float GaugeGapShare = 0.4f;
     const double GaugeSpringRate = 4.5; // about a second to arrive, which is how often sensors read
@@ -288,11 +291,31 @@ public sealed class ThemeRenderer : IDisposable
         if (stats.Get(element.Metric) is not { State: ReadingState.Ok, Value: { } value })
         {
             _gaugeValues.Remove((index, element.Metric));
-            TrackFrom(0);
+            if (element.UseTrackColor) TrackFrom(0);
+            else GradientFrom(0, sweep);
             return;
         }
 
         var filled = (float)EasedShare(index, element, GaugeShare(value, element.Min, element.Max)) * sweep;
+
+        void GradientFrom(float start, float end)
+        {
+            if (end <= start) return;
+            Arc(start, end, GaugeStepDegrees, Shade, thickness);
+            Cap(Shade(start), start, thickness);
+            Cap(Shade(end), end, thickness);
+        }
+
+        // The whole arc shows the gradient, broken by a gap around a larger marker at the reading.
+        if (!element.UseTrackColor)
+        {
+            var marker = MarkerSize(thickness);
+            var clearance = (marker / 2 + thickness * MarkerGapShare + thickness / 2) * degreesPerPixel;
+            GradientFrom(0, filled - clearance);
+            GradientFrom(filled + clearance, sweep);
+            Cap(Shade(filled), filled, marker);
+            return;
+        }
 
         // Past the rounded tip comes a gap, a separate dot, another gap, and then the unfilled track.
         var dotDiameter = thickness * GaugeDotShare;
@@ -319,6 +342,15 @@ public sealed class ThemeRenderer : IDisposable
         g.TranslateTransform(element.X, element.Y);
         g.RotateTransform(element.Rotation);
 
+        var start = ParseColor(element.Color, Color.Cyan);
+        var end = ParseColor(element.EndColor, start);
+        if (!element.UseTrackColor)
+        {
+            DrawMarkerBar(g, index, element, stats, box, radius, start, end);
+            g.Restore(saved);
+            return;
+        }
+
         using (var trackShape = RoundedBox(box, radius))
         using (var track = new SolidBrush(ParseColor(element.TrackColor, Color.FromArgb(42, 42, 46))))
             g.FillPath(track, trackShape);
@@ -328,10 +360,9 @@ public sealed class ThemeRenderer : IDisposable
             var filled = (float)EasedShare(index, element, GaugeShare(value, element.Min, element.Max)) * length;
             if (filled > 0)
             {
-                var from = ParseColor(element.Color, Color.Cyan);
                 var fill = box with { Width = filled };
                 var corner = Math.Min(radius, filled / 2);
-                using var brush = new LinearGradientBrush(Inflated(box), from, ParseColor(element.EndColor, from), 0f);
+                using var brush = new LinearGradientBrush(Inflated(box), start, end, 0f);
                 using var shape = RoundedBox(fill, corner);
                 g.FillPath(brush, shape);
                 if (element.Stripes) DrawStripes(g, fill, corner);
@@ -339,6 +370,39 @@ public sealed class ThemeRenderer : IDisposable
         }
         else _gaugeValues.Remove((index, element.Metric));
         g.Restore(saved);
+    }
+
+    static float MarkerSize(float thickness) => thickness + Math.Max(MinMarkerGrowth, thickness * MarkerGrowthShare);
+
+    /// <summary>The whole bar shows the gradient, broken by a gap around a round marker at the reading.</summary>
+    void DrawMarkerBar(Graphics g, int index, ElementSpec element, Stats stats, RectangleF box, float radius, Color start, Color end)
+    {
+        using var brush = new LinearGradientBrush(Inflated(box), start, end, 0f);
+        void Piece(float left, float right)
+        {
+            if (right - left <= 0.5f) return;
+            var piece = box with { X = left, Width = right - left };
+            var corner = Math.Min(radius, piece.Width / 2);
+            using var shape = RoundedBox(piece, corner);
+            g.FillPath(brush, shape);
+            if (element.Stripes) DrawStripes(g, piece, corner);
+        }
+
+        if (stats.Get(element.Metric) is not { State: ReadingState.Ok, Value: { } value })
+        {
+            _gaugeValues.Remove((index, element.Metric));
+            Piece(box.Left, box.Right);
+            return;
+        }
+
+        var share = (float)EasedShare(index, element, GaugeShare(value, element.Min, element.Max));
+        var marker = MarkerSize(box.Height);
+        var x = Math.Clamp(box.Left + share * box.Width, box.Left + box.Height / 2, box.Right - box.Height / 2);
+        var clearance = marker / 2 + box.Height * MarkerGapShare;
+        Piece(box.Left, x - clearance);
+        Piece(x + clearance, box.Right);
+        using var dot = new SolidBrush(Blend(start, end, share));
+        g.FillEllipse(dot, x - marker / 2, -marker / 2, marker, marker);
     }
 
     /// <summary>Each stripe stops at the fill's edge. Near the rounded tip that edge curves in, so a stripe shrinks away.</summary>

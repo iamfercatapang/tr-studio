@@ -50,11 +50,11 @@ const BUILT_IN = 'builtin:';
 const isBuiltIn = (path) => !path || path.startsWith(BUILT_IN);
 const NEW_GAUGE = {
   kind: 'Gauge', x: 240, y: 240, size: 430, metric: 'GpuTemp', min: 20, max: 100, thickness: 28,
-  startAngle: 135, sweep: 270, color: '#22E5E8', endColor: '#A855F7', trackColor: '#2A2A2E', dot: true,
+  startAngle: 135, sweep: 270, color: '#22E5E8', endColor: '#A855F7', trackColor: '#2A2A2E', useTrackColor: true, dot: true,
 };
 const NEW_BAR = {
   kind: 'Bar', x: 240, y: 240, size: 300, metric: 'CpuTemp', min: 20, max: 100, thickness: 22, cornerRadius: 11, rotation: 0,
-  color: '#FF9F0A', endColor: '#FF453A', trackColor: '#3A3A3F', stripes: false,
+  color: '#FF9F0A', endColor: '#FF453A', trackColor: '#3A3A3F', useTrackColor: true, stripes: false,
 };
 const SHAPES = ['Line', 'Arc', 'Rectangle', 'Ellipse', 'Triangle', 'Diamond', 'Hexagon', 'Star'];
 const LINE_STYLES = ['Solid', 'Dashed', 'Dotted'];
@@ -1675,9 +1675,17 @@ function gaugeControls(item) {
     }),
     colorField('Low Color', item.color, (v) => { item.color = v; }),
     colorField('High Color', item.endColor, (v) => { item.endColor = v; }),
-    colorField('Track Color', item.trackColor, (v) => { item.trackColor = v; }),
-    toggle('Dot Past Tip', item.dot, (v) => { item.dot = v; }),
+    ...trackControls(item),
+    ...(item.useTrackColor === false ? [] : [toggle('Dot Past Tip', item.dot, (v) => { item.dot = v; })]),
     element('button', { textContent: 'Delete', className: 'danger wide', onclick: removeSelected }));
+  return controls;
+}
+
+/* Off, the whole gauge or bar shows the gradient and a marker sits at the reading. */
+function trackControls(item) {
+  const on = item.useTrackColor !== false;
+  const controls = [toggle('Track Color', on, (v) => { item.useTrackColor = v; })];
+  if (on) controls.push(colorField('Track Color', item.trackColor, (v) => { item.trackColor = v; }));
   return controls;
 }
 
@@ -1696,7 +1704,7 @@ function barControls(item) {
     rotationSlider(item),
     colorField('Low Color', item.color, (v) => { item.color = v; }),
     colorField('High Color', item.endColor, (v) => { item.endColor = v; }),
-    colorField('Track Color', item.trackColor, (v) => { item.trackColor = v; }),
+    ...trackControls(item),
     toggle('Stripes', item.stripes, (v) => { item.stripes = v; }),
     element('button', { textContent: 'Delete', className: 'danger wide', onclick: removeSelected }));
   return controls;
