@@ -9,6 +9,7 @@ Tray app that drives the Thermalright Core Vision 360 AIO screen. .NET 8 WinForm
 - UI preview without the app: `node tools/UiPreview/server.js` (port 4173). It loads `tools/UiPreview/mock.js`; when you add a message between the page and the app, add it to the mock too.
 - Installer: `powershell -File tools/BuildInstaller.ps1` (needs Inno Setup 6 and `third-party/ffmpeg/ffmpeg.exe`), output in `artifacts/`.
 - `third-party/` isn't in git.
+- README hero GIF: built from `tools/ReadmeDemo` with the Stageshow skill; its README says how to rebuild it.
 - Probes for checking features by hand: `tools/MediaProbe` (what Windows reports as playing), `tools/WeatherProbe <city> <out.jpg>` (live Open-Meteo forecast), `tools/ScreenProbe`, `tools/SensorProbe`.
 
 ## Conventions

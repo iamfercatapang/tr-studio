@@ -1,0 +1,309 @@
+/* TR Studio's own tokens (src/CoreVision.App/wwwroot/app.css), scoped to the demo */
+.trs {
+  --trs-bg: #000;
+  --trs-surface: #0c0a16;
+  --trs-raised: #18142b;
+  --trs-hover: #231d3e;
+  --trs-sidebar: #0a0812;
+  --trs-hairline: rgba(160, 123, 255, 0.16);
+  --trs-hairline-strong: rgba(160, 123, 255, 0.34);
+  --trs-text: #f3f0ff;
+  --trs-text-2: #aaa3cc;
+  --trs-accent: #00e5ff;
+  --trs-gradient: linear-gradient(120deg, #00e5ff, #8b5cff 55%, #ff3dd8);
+  --trs-on-accent: #06020e;
+  --trs-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --trs-mono: "Cascadia Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
+}
+
+.trs .ss-stage {
+  overflow: hidden;
+  background: var(--trs-bg);
+  font-family: var(--trs-sans);
+}
+
+.trs .ss-bar { background: rgba(170, 163, 204, 0.16); }
+.trs .ss-bar[data-tone='3'] { background: rgba(170, 163, 204, 0.26); }
+
+.trs-icon { flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
+/* The app's mesh, the backdrop behind its pages */
+.trs-mesh {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(60% 55% at 6% 0%, rgba(139, 92, 255, 0.24), transparent 70%),
+    radial-gradient(50% 45% at 100% 6%, rgba(0, 229, 255, 0.13), transparent 70%),
+    radial-gradient(55% 55% at 96% 100%, rgba(255, 61, 216, 0.16), transparent 72%);
+}
+
+/* The hero: inset top and left, off the bottom */
+.trs-window {
+  position: absolute;
+  left: 36px;
+  top: 36px;
+  width: 690px;
+  height: 560px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--trs-bg);
+  box-shadow: 0 0 0 1px var(--trs-hairline), 0 24px 70px rgba(0, 0, 0, 0.78);
+  color: var(--trs-text);
+}
+
+/* The app's own frameless title bar: Windows controls on the right */
+.trs-titlebar {
+  flex: none;
+  height: 30px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.trs-winctl { display: flex; }
+.trs-winctl i { position: relative; width: 44px; height: 30px; }
+.trs-min::before { content: ''; position: absolute; left: 17px; top: 15px; width: 10px; border-top: 1px solid var(--trs-text-2); }
+.trs-max::before { content: ''; position: absolute; left: 17px; top: 10px; width: 8px; height: 8px; border: 1px solid var(--trs-text-2); }
+.trs-close::before, .trs-close::after { content: ''; position: absolute; left: 16px; top: 14.5px; width: 12px; border-top: 1px solid var(--trs-text-2); transform: rotate(45deg); }
+.trs-close::after { transform: rotate(-45deg); }
+
+.trs-body { flex: 1; display: flex; min-height: 0; }
+
+.trs-sidebar {
+  flex: none;
+  width: 108px;
+  padding: 12px 8px;
+  background: var(--trs-sidebar);
+  border-right: 1px solid var(--trs-hairline);
+}
+
+.trs-brand {
+  width: fit-content;
+  padding: 0 8px;
+  font-family: var(--trs-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--trs-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.trs-brand__sub { margin: 6px 8px 16px; }
+
+.trs-nav { display: grid; gap: 2px; }
+
+.trs-nav__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 8px;
+  color: var(--trs-text-2);
+  font-size: 12px;
+}
+
+.trs-nav__item[data-active] {
+  background: linear-gradient(90deg, rgba(0, 229, 255, 0.18), rgba(139, 92, 255, 0.1));
+  box-shadow: inset 2px 0 0 var(--trs-accent);
+  color: var(--trs-text);
+  font-weight: 600;
+}
+
+.trs-nav__item[data-active] .trs-icon { color: var(--trs-accent); }
+
+.trs-editor { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+.trs-toolbar {
+  flex: none;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px 0 16px;
+  border-bottom: 1px solid var(--trs-hairline);
+  background: var(--trs-sidebar);
+}
+
+.trs-theme-name { font-size: 13px; font-weight: 600; }
+
+.trs-tools { display: flex; align-items: center; gap: 6px; }
+
+.trs-tool {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: var(--trs-raised);
+  color: var(--trs-text-2);
+}
+
+.trs-tool--redo .trs-icon { transform: scaleX(-1); }
+
+.trs-save {
+  display: grid;
+  place-items: center;
+  height: 26px;
+  margin-left: 4px;
+  padding: 0 12px;
+  border-radius: 7px;
+  background: var(--trs-gradient);
+  color: var(--trs-on-accent);
+  font-size: 12px;
+  font-weight: 600;
+  transition: filter 0.15s ease;
+}
+
+.trs-save[data-pressed] { filter: brightness(0.9); }
+
+.trs-save__label { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.trs-save__label .trs-icon { stroke-width: 2; }
+
+.trs-work { flex: 1; display: flex; min-height: 0; }
+
+.trs-panel {
+  flex: none;
+  width: 200px;
+  padding: 14px 12px;
+  background: var(--trs-sidebar);
+  border-right: 1px solid var(--trs-hairline);
+}
+
+.trs-panel__head { margin: 0 2px 10px; }
+
+.trs-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  margin-bottom: 18px;
+}
+
+.trs-tile {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 6px;
+  height: 46px;
+  border-radius: 8px;
+  background: var(--trs-raised);
+  color: var(--trs-text-2);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.trs-tile[data-hover] { background: var(--trs-hover); color: var(--trs-text); }
+.trs-tile[data-hover] .trs-icon { color: var(--trs-accent); }
+.trs-tile[data-pressed] { background: #2e2752; }
+
+.trs-tile__label { font-size: 10.5px; line-height: 1.3; font-weight: 500; }
+
+.trs-layers { display: grid; }
+
+.trs-layer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: var(--trs-text-2);
+  font-size: 12px;
+}
+
+.trs-layer[data-selected] {
+  background: var(--trs-gradient);
+  color: var(--trs-on-accent);
+  font-weight: 600;
+}
+
+.trs-canvas-area {
+  flex: 1;
+  position: relative;
+  background: var(--trs-bg);
+}
+
+/* Centered in the part the cooler leaves visible */
+.trs-canvas {
+  position: absolute;
+  left: 36px;
+  top: 76px;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--trs-hairline-strong), 0 0 44px rgba(139, 92, 255, 0.22);
+}
+
+/* The cooler's round screen: a brushed ring around the panel */
+.trs-cooler {
+  position: absolute;
+  left: 616px;
+  top: 178px;
+  width: 220px;
+  height: 220px;
+  padding: 8px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, #000 62%, transparent 63%),
+    conic-gradient(from 210deg, #3a3a44, #15151b 22%, #4a4a55 45%, #17171d 70%, #3a3a44);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 24px 60px rgba(0, 0, 0, 0.8), 0 0 60px rgba(0, 229, 255, 0.08);
+}
+
+.trs-cooler__screen { border-radius: 50%; overflow: hidden; }
+
+/* The theme, in the app's 480-unit space */
+.trs-face { position: relative; overflow: hidden; border-radius: 50%; background: #000; }
+.trs-face__units { position: absolute; left: 0; top: 0; width: 480px; height: 480px; transform-origin: 0 0; }
+.trs-arcs { position: absolute; inset: 0; }
+.trs-arc__track { fill: none; stroke: rgba(255, 255, 255, 0.08); stroke-width: 30; stroke-linecap: round; }
+.trs-arc__fill { fill: none; stroke-width: 30; stroke-linecap: round; }
+
+.trs-clock {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 92px;
+  text-align: center;
+  color: var(--trs-text-2);
+  font-size: 32px;
+  font-weight: 500;
+}
+
+.trs-temp {
+  position: absolute;
+  top: 160px;
+  display: grid;
+  justify-items: center;
+  transform: translateX(-50%);
+}
+
+.trs-temp__value { color: #fff; font-size: 84px; font-weight: 700; line-height: 1; }
+.trs-temp__value i, .trs-weather__temp i { font-style: normal; font-weight: 400; font-size: 0.5em; vertical-align: 0.8em; }
+.trs-temp__label { margin-top: 8px; font-size: 30px; font-weight: 700; letter-spacing: 0.04em; }
+
+.trs-weather {
+  position: absolute;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 18px;
+  border-radius: 16px;
+  transform: translate(-50%, -50%) scale(0.92);
+  opacity: 0;
+  transition: opacity 0.5s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.2s ease;
+  will-change: transform;
+}
+
+.trs-weather[data-show] { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.trs-weather[data-selected] { box-shadow: 0 0 0 3px var(--trs-accent); }
+.trs-weather[data-dragging] { transition: opacity 0.5s ease, box-shadow 0.2s ease; }
+
+.trs-weather__row { display: flex; align-items: center; gap: 14px; }
+.trs-weather__icon { color: #ffd60a; stroke-width: 1.3; }
+.trs-weather__temp { color: #fff; font-size: 64px; font-weight: 700; line-height: 1; }
+.trs-weather__cond { color: var(--trs-text-2); font-size: 28px; font-weight: 500; }
+
+.trs-rest { position: absolute; left: 470px; top: 150px; width: 1px; height: 1px; }

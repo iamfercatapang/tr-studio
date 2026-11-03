@@ -6,7 +6,7 @@ TR Studio runs the screen on the Thermalright Core Vision 360 AIO cooler. It put
 
 > TR Studio is an unofficial, independent project. Thermalright didn't make it and doesn't endorse or support it. Thermalright and Core Vision are their owner's trademarks.
 
-![The TR Studio Metrics page, with live CPU, GPU, cooling and system stats](docs/screenshots/metrics.png)
+![Adding a Weather widget in the TR Studio Editor: it appears on the cooler's screen as you place it, then the theme is saved](docs/screenshots/editor-demo.gif)
 
 ## Why I built it
 
@@ -25,6 +25,8 @@ The Metrics page is a live dashboard with ring gauges and bars. It covers:
 - Memory load, how much is in use and available, memory speed, and motherboard temperature
 
 A This PC tile lists your processor, graphics card, motherboard, memory, storage and Windows version. You can drag the tiles into whatever order you like.
+
+![The TR Studio Metrics page, with live CPU, GPU, cooling and system stats](docs/screenshots/metrics.png)
 
 ### Themes
 
