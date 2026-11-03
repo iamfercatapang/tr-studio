@@ -17,6 +17,7 @@ public enum Metric
 public enum TextAlign { Left, Center, Right }
 public enum ShapeKind { Line, Arc, Rectangle, Ellipse, Triangle, Diamond, Hexagon, Star }
 public enum LineStyle { Solid, Dashed, Dotted }
+public enum CaptureSource { Area, Screen, Window }
 
 public sealed record BackgroundSpec(BackgroundKind Kind = BackgroundKind.Color, string Color = "#000000", string? Path = null);
 
@@ -54,10 +55,17 @@ public sealed record ElementSpec(ElementKind Kind, float X, float Y, float Size)
     public bool UseTrackColor { get; init; } = true;
 
     // Capture: a live area of the desktop, in desktop pixels. X and Y are the center and Size is the width.
+    // A Screen source follows CaptureScreen, a monitor's device name, and falls back to the stored area.
+    // A Window source follows the window of CaptureProcess titled CaptureTitle wherever it is, even when covered.
+    // CaptureWidth and CaptureHeight always give the shape, as the screen or window was when chosen.
+    public CaptureSource Source { get; init; }
     public int CaptureX { get; init; }
     public int CaptureY { get; init; }
     public int CaptureWidth { get; init; }
     public int CaptureHeight { get; init; }
+    public string? CaptureScreen { get; init; }
+    public string? CaptureProcess { get; init; }
+    public string? CaptureTitle { get; init; }
     public float CornerRadius { get; init; } = 16;
 
     // Bar: X and Y are the center, Size is the length and Thickness is the height. Color runs to EndColor

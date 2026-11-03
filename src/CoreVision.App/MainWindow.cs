@@ -197,6 +197,9 @@ sealed class MainWindow : Form
                 case "pickRegion":
                     _ = PickRegionAsync();
                     break;
+                case "listCaptureSources":
+                    _ = ListCaptureSourcesAsync();
+                    break;
             }
         }
         catch (Exception e) when (e is JsonException or InvalidDataException or InvalidOperationException or NullReferenceException or IOException or UnauthorizedAccessException)
@@ -238,6 +241,13 @@ sealed class MainWindow : Form
                 : new JsonObject { ["type"] = "region" });
         }
         if (!ScreenRegionPicker.TryShow(Finish, _app.Log)) Finish(null);
+    }
+
+    /// <summary>Copying every window takes a moment, so it happens off the interface thread.</summary>
+    async Task ListCaptureSourcesAsync()
+    {
+        var sources = await Task.Run(() => CaptureSources.List(_app.Log));
+        Post(sources);
     }
 
     const string PackageFilter = "TR Studio theme|*" + ThemeStore.PackageExtension;

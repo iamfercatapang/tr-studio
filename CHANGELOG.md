@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Picture-in-Picture can show a window or a whole screen.** The PiP button opens a picker with Window, Screen and Area tabs, each with a live thumbnail. A window stays visible on the cooler when you move it or cover it with other windows, and is found again after the app restarts. While it's minimized, its last picture stays up. Choose Source… in the Editor changes what an existing PiP shows.
+
 ## 1.3.0 (Nov 3, 2026)
 
 - **Experimental Trofeo Vision support.** TR Studio can now drive the Trofeo Vision 9.16" screen (USB 0416:5408, 1920×462). Its protocol was worked out from TRCC and hasn’t been tried on a real screen yet. Themes show in the middle of the wide screen for now. If you have one, please report how it goes.

@@ -66,7 +66,10 @@ public sealed partial class ThemeRenderer : IDisposable
     readonly Stopwatch _sinceFade = new();
 
     readonly Dictionary<(int Index, Metric Metric), (double Shown, double Speed)> _gaugeValues = [];
-    readonly Dictionary<(Rectangle Source, Size Fitted), ScreenCapture> _captures = [];
+    readonly Dictionary<CaptureKey, ICapture> _captures = [];
+
+    /// <summary>What a capture shows. An area or screen is a desktop rectangle; a window is its app and title.</summary>
+    readonly record struct CaptureKey(Rectangle Area, string? Process, string? Title, Size Fitted);
     readonly Stopwatch _sinceRender = Stopwatch.StartNew();
     double _frameSeconds;
 
@@ -93,7 +96,7 @@ public sealed partial class ThemeRenderer : IDisposable
         _frameSeconds = _sinceRender.Elapsed.TotalSeconds;
         _sinceRender.Restart();
         IsAnimating = false;
-        var capturesUsed = new HashSet<(Rectangle, Size)>();
+        var capturesUsed = new HashSet<CaptureKey>();
         for (var i = 0; i < elements.Count; i++)
         {
             if (elements[i].Hidden) continue;
@@ -200,13 +203,23 @@ public sealed partial class ThemeRenderer : IDisposable
     }
 
     /// <summary>Painted with a brush, not a clip, because only a fill gives the rounded corners smooth edges.</summary>
-    void DrawCapture(Graphics g, ElementSpec element, float scale, HashSet<(Rectangle, Size)> used)
+    void DrawCapture(Graphics g, ElementSpec element, float scale, HashSet<CaptureKey> used)
     {
         if (CaptureBox(element) is not { } box) return;
-        var source = new Rectangle(element.CaptureX, element.CaptureY, element.CaptureWidth, element.CaptureHeight);
         var fitted = new Size(Math.Max((int)Math.Ceiling(box.Width * scale), 1), Math.Max((int)Math.Ceiling(box.Height * scale), 1));
-        var key = (source, fitted);
-        if (!_captures.TryGetValue(key, out var capture)) _captures[key] = capture = new ScreenCapture(source, fitted);
+        var stored = new Rectangle(element.CaptureX, element.CaptureY, element.CaptureWidth, element.CaptureHeight);
+        var key = element.Source switch
+        {
+            CaptureSource.Window => new CaptureKey(Rectangle.Empty, element.CaptureProcess, element.CaptureTitle, fitted),
+            CaptureSource.Screen => new CaptureKey(ScreenCapture.ScreenBounds(element.CaptureScreen) ?? stored, null, null, fitted),
+            _ => new CaptureKey(stored, null, null, fitted),
+        };
+        if (!_captures.TryGetValue(key, out var capture))
+        {
+            _captures[key] = capture = element.Source == CaptureSource.Window
+                ? new WindowCapture(key.Process, key.Title, fitted)
+                : new ScreenCapture(key.Area, fitted);
+        }
         used.Add(key);
         capture.Refresh();
         IsAnimating = true; // the desktop can change at any moment

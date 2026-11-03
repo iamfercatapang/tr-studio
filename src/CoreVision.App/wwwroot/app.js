@@ -1985,12 +1985,86 @@ function pickRegion(target) {
   send({ type: 'pickRegion' });
 }
 
+/* Adds a Picture-in-Picture for 'new', or changes what the selected one shows. */
+function applyCaptureSource(target, fields) {
+  if (!app.draft) return;
+  const area = { source: 'Area', captureScreen: null, captureProcess: null, captureTitle: null, ...fields };
+  if (target === 'new') { addElement({ kind: 'Capture', x: SCREEN / 2, y: SCREEN / 2, ...NEW_CAPTURE, ...area }); return; }
+  const item = app.draft.elements[app.selected];
+  if (item?.kind !== 'Capture') return;
+  remember();
+  Object.assign(item, area);
+  renderInspector();
+  changed();
+}
+
+function openCaptureDialog(target) {
+  app.captureTarget = target;
+  app.captureTab ??= 'windows';
+  requestCaptureSources();
+  $('captureDialog').showModal();
+}
+
+function requestCaptureSources() {
+  app.captureSources = null;
+  renderCaptureSources();
+  send({ type: 'listCaptureSources' });
+}
+
+function captureCard(name, detail, thumbnail, choose) {
+  const thumb = element('span', { className: 'capture-thumb' });
+  if (thumbnail) thumb.append(element('img', { src: thumbnail, alt: '' }));
+  else thumb.textContent = 'Minimized';
+  return element('button', { type: 'button', className: 'capture-card', title: name, onclick: choose },
+    thumb, element('span', { className: 'capture-name', textContent: name }), element('span', { className: 'capture-detail', textContent: detail }));
+}
+
+function chooseCapture(fields) {
+  $('captureDialog').close();
+  applyCaptureSource(app.captureTarget, fields);
+}
+
+function renderCaptureSources() {
+  const list = $('captureSources');
+  const tab = app.captureTab ?? 'windows';
+  document.querySelectorAll('#captureTabs button').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.tab === tab)));
+  list.classList.remove('empty');
+  const empty = (...children) => { list.classList.add('empty'); list.replaceChildren(...children); };
+
+  if (tab === 'area') {
+    empty(element('p', { className: 'hint', textContent: 'Drag a box around any part of your desktop. It stays in the same place on the screen.' }),
+      element('button', { type: 'button', className: 'primary', textContent: 'Drag to Choose…', onclick: () => { $('captureDialog').close(); pickRegion(app.captureTarget); } }));
+    return;
+  }
+  if (!app.captureSources) { empty(element('div', { className: 'spinner' }), element('p', { className: 'hint', textContent: 'Looking for screens and windows…' })); return; }
+
+  if (tab === 'screens') {
+    list.replaceChildren(...app.captureSources.screens.map((screen) => captureCard(
+      screen.primary ? `${screen.name} (Main)` : screen.name, `${screen.width} × ${screen.height}`, screen.thumbnail,
+      () => chooseCapture({ source: 'Screen', captureScreen: screen.device, captureX: screen.x, captureY: screen.y, captureWidth: screen.width, captureHeight: screen.height }))));
+    return;
+  }
+  const windows = app.captureSources.windows;
+  if (!windows.length) { empty(element('p', { className: 'hint', textContent: 'No open windows found. Open the app you want to show, then press Refresh.' })); return; }
+  list.replaceChildren(...windows.map((win) => captureCard(win.title, win.process, win.thumbnail,
+    () => chooseCapture({ source: 'Window', captureProcess: win.process, captureTitle: win.title, captureX: 0, captureY: 0, captureWidth: win.width, captureHeight: win.height }))));
+}
+
+function captureDescription(item) {
+  if (item.source === 'Window') return `Showing ${item.captureTitle} (${item.captureProcess}), live. It follows the window when it moves or is covered.`;
+  if (item.source === 'Screen') return `Showing a whole screen, ${item.captureWidth} × ${item.captureHeight}, live.`;
+  return `Showing ${item.captureWidth} × ${item.captureHeight} of your desktop, live.`;
+}
+
 function captureControls(item) {
   const controls = [
     element('h3', { textContent: 'Picture-in-Picture' }),
-    element('p', { className: 'hint', textContent: `Showing ${item.captureWidth} × ${item.captureHeight} of your desktop, live.` }),
-    element('button', { textContent: 'Choose Area…', className: 'wide', onclick: () => pickRegion('selected') }),
+    element('p', { className: 'hint', textContent: captureDescription(item) }),
+    element('button', { textContent: 'Choose Source…', className: 'wide', onclick: () => openCaptureDialog('selected') }),
   ];
+  if (item.source === 'Window') {
+    controls.push(element('p', { className: 'hint', textContent: 'While the window is minimized, its last picture stays up.' }));
+  }
   if (isOutsideCircle(item)) {
     controls.push(element('p', { className: 'hint warning', textContent: 'Part of this is outside the screen.' }));
   }
@@ -2291,17 +2365,14 @@ const handlers = {
     toast('Palette imported');
   },
   region(message) {
-    const adding = app.regionTarget === 'new';
-    const item = adding ? null : app.draft?.elements[app.selected];
+    const target = app.regionTarget;
     app.regionTarget = null;
-    if (message.width === undefined || !app.draft) return;
-    const area = { captureX: message.x, captureY: message.y, captureWidth: message.width, captureHeight: message.height };
-    if (adding) { addElement({ kind: 'Capture', x: SCREEN / 2, y: SCREEN / 2, ...NEW_CAPTURE, ...area }); return; }
-    if (item?.kind !== 'Capture') return;
-    remember();
-    Object.assign(item, area);
-    renderInspector();
-    changed();
+    if (message.width === undefined) return;
+    applyCaptureSource(target, { captureX: message.x, captureY: message.y, captureWidth: message.width, captureHeight: message.height });
+  },
+  captureSources(message) {
+    app.captureSources = message;
+    if ($('captureDialog').open) renderCaptureSources();
   },
   notice(message) { toast(message.message); },
   error(message) { toast(message.message); },
@@ -2328,7 +2399,10 @@ $('addDate').onclick = () => addElement({ kind: 'Date', format: DATE_FORMATS[0],
 $('addGauge').onclick = () => addElement(NEW_GAUGE);
 $('addBar').onclick = () => addElement(NEW_BAR);
 $('addShape').onclick = () => addElement(NEW_SHAPE);
-$('addCapture').onclick = () => pickRegion('new');
+$('addCapture').onclick = () => openCaptureDialog('new');
+document.querySelectorAll('#captureTabs button').forEach((button) => button.addEventListener('click', () => { app.captureTab = button.dataset.tab; renderCaptureSources(); }));
+$('captureRefresh').onclick = requestCaptureSources;
+$('captureCancel').onclick = () => $('captureDialog').close();
 $('addMusic').onclick = () => addElement(NEW_MUSIC);
 $('addWeather').onclick = () => addElement(NEW_WEATHER);
 $('windowMinimize').onclick = () => send({ type: 'window', action: 'minimize' });

@@ -47,7 +47,7 @@ Everything you change in the Editor shows up on the cooler as you go. You can ad
 - Stats, text, clocks and dates
 - Ring gauges and bars. Turn off Track Color and they show their full gradient with a marker at the reading instead
 - Shapes and lines, in eight types, with rotation, gradients, opacity, outlines and dashed or dotted lines
-- Picture-in-Picture, which mirrors any part of your desktop onto the cooler live
+- Picture-in-Picture, which mirrors a window, a whole screen or any part of your desktop onto the cooler live
 
 Backgrounds can be an image, GIF, video or solid color. Layers can be reordered by dragging and hidden, and the Layers pane can be resized. Text gets a choice of fonts, a stroke and a shadow. Snapping guides help line things up, undo and redo cover every change, and you can type an exact value into any slider or reset it to its default. There's Save and Save As, and the Editor warns you when something runs off the edge of a round screen.
 

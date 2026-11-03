@@ -174,6 +174,21 @@ window.chrome.webview = {
       ] }), 500);
     }
     if (message.type === 'pickRegion') setTimeout(() => emit({ type: 'region', x: 100, y: 100, width: 800, height: 450 }), 50);
+    if (message.type === 'listCaptureSources') {
+      const thumb = (color, width, height) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}"><rect width="100%" height="100%" fill="${color}"/></svg>`)}`;
+      setTimeout(() => emit({
+        type: 'captureSources',
+        screens: [
+          { device: '\\\\.\\DISPLAY1', name: 'Screen 1', primary: true, x: 0, y: 0, width: 2560, height: 1440, thumbnail: thumb('#1d3b6e', 16, 9) },
+          { device: '\\\\.\\DISPLAY2', name: 'Screen 2', primary: false, x: 2560, y: 0, width: 1920, height: 1080, thumbnail: thumb('#3b1d6e', 16, 9) },
+        ],
+        windows: [
+          { title: 'YouTube – Google Chrome', process: 'chrome', width: 1600, height: 900, thumbnail: thumb('#6e1d1d', 16, 9) },
+          { title: 'Untitled - Notepad', process: 'Notepad', width: 900, height: 700, thumbnail: thumb('#2b2b2b', 9, 7) },
+          { title: 'Discord', process: 'Discord', width: 1200, height: 800, thumbnail: null },
+        ],
+      }), 400);
+    }
     if (message.type === 'preview') { theme = message.theme; emit({ type: 'frame', jpeg: render(), stats }); }
     if (message.type === 'select') { window.mock.path = message.path; theme = saved.get(message.path) ?? defaultTheme; state(); }
     if (message.type === 'save') {

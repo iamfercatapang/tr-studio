@@ -129,6 +129,60 @@ public sealed class ThemeTests : IDisposable
         Assert.Equal(element, loaded.Elements[0]);
     }
 
+    [Fact]
+    public void Window_and_screen_captures_survive_a_json_round_trip()
+    {
+        var window = new ElementSpec(ElementKind.Capture, 240, 240, 200)
+            { Source = CaptureSource.Window, CaptureProcess = "Notepad", CaptureTitle = "Untitled - Notepad", CaptureWidth = 900, CaptureHeight = 700 };
+        var screen = new ElementSpec(ElementKind.Capture, 240, 240, 200)
+            { Source = CaptureSource.Screen, CaptureScreen = @"\\.\DISPLAY2", CaptureX = 2560, CaptureWidth = 1920, CaptureHeight = 1080 };
+        var loaded = Theme.FromJson((Theme.Default with { Elements = [window, screen] }).ToJson());
+
+        Assert.Equal(window, loaded.Elements[0]);
+        Assert.Equal(screen, loaded.Elements[1]);
+    }
+
+    [Fact]
+    public void Captures_saved_before_sources_existed_show_their_area()
+    {
+        var json = """{"name":"Old","background":{"kind":"Color","color":"#000000"},"elements":[{"kind":"Capture","x":240,"y":240,"size":200,"captureX":10,"captureY":20,"captureWidth":800,"captureHeight":600}]}""";
+
+        var element = Theme.FromJson(json).Elements[0];
+
+        Assert.Equal(CaptureSource.Area, element.Source);
+        Assert.Equal(800, element.CaptureWidth);
+    }
+
+    [Fact]
+    public void A_window_that_is_not_open_leaves_the_background_showing()
+    {
+        var element = new ElementSpec(ElementKind.Capture, 240, 240, 200)
+            { Source = CaptureSource.Window, CaptureProcess = "NoSuchApp-1f6c", CaptureTitle = "Nothing", CaptureWidth = 800, CaptureHeight = 600 };
+        using var background = Backgrounds.Create(new BackgroundSpec(BackgroundKind.Color, "#102030"));
+        using var renderer = new ThemeRenderer();
+
+        var frame = renderer.Render(background, [element], Stats.Empty, DateTime.Now);
+
+        Assert.True(renderer.IsAnimating); // keeps looking, so the window shows up once it opens
+        Assert.Equal(Render(background), frame);
+    }
+
+    [Fact]
+    public void No_window_is_found_for_an_app_that_is_not_running()
+    {
+        Assert.Equal(IntPtr.Zero, DesktopWindows.Find("NoSuchApp-1f6c", "Nothing"));
+    }
+
+    [Theory]
+    [InlineData(1600, 900, 160, 90, 0, 0, 1600, 900)]
+    [InlineData(1600, 900, 100, 100, 350, 0, 900, 900)]
+    [InlineData(800, 1200, 160, 90, 0, 375, 800, 450)]
+    public void A_resized_window_is_cropped_to_the_box_not_stretched(int sourceWidth, int sourceHeight, int targetWidth, int targetHeight,
+        int x, int y, int width, int height)
+    {
+        Assert.Equal(new Rectangle(x, y, width, height), DesktopWindows.Cover(new Size(sourceWidth, sourceHeight), new Size(targetWidth, targetHeight)));
+    }
+
     [Theory]
     [InlineData("AMD Ryzen 7 5800X 8-Core Processor             ", "AMD Ryzen 7 5800X 8-Core Processor")]
     [InlineData("Intel(R) Core(TM) i7-12700K CPU", "Intel Core i7-12700K CPU")]

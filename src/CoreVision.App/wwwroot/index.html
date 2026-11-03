@@ -224,6 +224,21 @@
     </form>
   </dialog>
 
+  <dialog id="captureDialog" class="capture-dialog" aria-labelledby="captureTitle">
+    <h3 id="captureTitle">Picture-in-Picture</h3>
+    <p>Choose what to show on the cooler. A window stays visible when other windows cover it.</p>
+    <div class="segmented" id="captureTabs" role="tablist">
+      <button type="button" role="tab" data-tab="windows" aria-pressed="true">Window</button>
+      <button type="button" role="tab" data-tab="screens" aria-pressed="false">Screen</button>
+      <button type="button" role="tab" data-tab="area" aria-pressed="false">Area</button>
+    </div>
+    <div class="capture-sources" id="captureSources" aria-live="polite"></div>
+    <div class="dialog-actions">
+      <button type="button" id="captureRefresh">Refresh</button>
+      <button type="button" id="captureCancel">Cancel</button>
+    </div>
+  </dialog>
+
   <dialog id="confirm">
     <h3 id="confirmTitle"></h3>
     <p id="confirmBody"></p>

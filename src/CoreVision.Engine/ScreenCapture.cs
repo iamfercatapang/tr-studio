@@ -5,9 +5,20 @@ using System.Drawing.Drawing2D;
 
 namespace CoreVision.Engine;
 
-/// <summary>A live copy of one area of the desktop, already scaled to the size it is drawn at.</summary>
-sealed class ScreenCapture(Rectangle source, Size fitted) : IDisposable
+/// <summary>A live picture for Picture-in-Picture, already scaled to the size it is drawn at.</summary>
+interface ICapture : IDisposable
 {
+    Bitmap Image { get; }
+    void Refresh();
+}
+
+/// <summary>A live copy of one area of the desktop, already scaled to the size it is drawn at.</summary>
+sealed class ScreenCapture(Rectangle source, Size fitted) : ICapture
+{
+    /// <summary>The monitor's area now, so a rearranged desktop still shows the same screen.</summary>
+    public static Rectangle? ScreenBounds(string? deviceName) =>
+        Screen.AllScreens.FirstOrDefault(screen => screen.DeviceName == deviceName)?.Bounds;
+
     static readonly TimeSpan Interval = TimeSpan.FromMilliseconds(50);
 
     readonly Bitmap _raw = new(source.Width, source.Height);
