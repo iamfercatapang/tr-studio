@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.3.0 (Nov 3, 2026)
 
 - **Experimental Trofeo Vision support.** TR Studio can now drive the Trofeo Vision 9.16" screen (USB 0416:5408, 1920×462). Its protocol was worked out from TRCC and hasn’t been tried on a real screen yet. Themes show in the middle of the wide screen for now. If you have one, please report how it goes.
 
