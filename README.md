@@ -1,5 +1,7 @@
 # TR Studio
 
+[![Latest release](https://img.shields.io/github/v/release/iamfercatapang/tr-studio)](https://github.com/iamfercatapang/tr-studio/releases/latest) [![Downloads](https://img.shields.io/github/downloads/iamfercatapang/tr-studio/total)](https://github.com/iamfercatapang/tr-studio/releases)
+
 TR Studio runs the screen on the Thermalright Core Vision 360 AIO cooler. It puts live system stats, themes, images and video on the cooler, and it replaces Thermalright's own TRCC software.
 
 > TR Studio is an unofficial, independent project. Thermalright didn't make it and doesn't endorse or support it. Thermalright and Core Vision are their owner's trademarks.
@@ -84,7 +86,7 @@ I've only tested TR Studio on my own PC, with a Core Vision 360 and its 480×480
 
 ## Install
 
-Build the installer as described below, then run `TRStudio-<version>-Setup.exe`. It isn't code-signed, so Windows SmartScreen may warn you. Choose **More info**, then **Run anyway**.
+Download `TRStudio-<version>-Setup.exe` from the [latest release](https://github.com/iamfercatapang/tr-studio/releases/latest) and run it, or build it yourself as described below. It isn't code-signed, so Windows SmartScreen may warn you. Choose **More info**, then **Run anyway**.
 
 If you uninstall, your themes and settings stay in `C:\ProgramData\CoreVisionStudio`.
 
