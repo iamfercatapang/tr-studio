@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.4.1 (Nov 4, 2026)
 
 - **The Theme Playlist can hold every theme you have**, not just 3. Add themes until none are left.
 - **Run at Windows Startup is on for new installs.** An existing install keeps its choice, and the switch in Settings turns it off.

@@ -1,6 +1,6 @@
 ; Built by tools/BuildInstaller.ps1, which fills in the version and publishes the app first.
 #ifndef AppVersion
-  #define AppVersion "1.4.0"
+  #define AppVersion "1.4.1"
 #endif
 #define AppName "TR Studio"
 #define AppExe "CoreVision.App.exe"
