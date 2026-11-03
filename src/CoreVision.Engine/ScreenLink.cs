@@ -19,7 +19,7 @@ public sealed class ScreenLink : IDisposable
     readonly AutoResetEvent _wake = new(false);
     readonly Thread _thread;
     byte[]? _pendingJpeg;
-    byte[]? _lastFrame;
+    byte[]? _lastJpeg;
     volatile bool _stopping;
     volatile bool _suspended;
     volatile LinkStatus _status = new(LinkState.Stopped, null, "Not started");
@@ -101,26 +101,25 @@ public sealed class ScreenLink : IDisposable
         SetStatus(LinkState.Stopped, null, "Stopped");
     }
 
-    static ScreenInfo Connect(IScreenTransport transport)
-    {
-        var hello = ScreenProtocol.BuildHello();
-        transport.Write(hello, hello.Length);
-        var buffer = new byte[1024];
-        var read = transport.Read(buffer);
-        return ScreenProtocol.ParseHelloReply(buffer.AsSpan(0, read));
-    }
+    static ScreenInfo Connect(IScreenTransport transport) => transport.Device.Family.Connect(transport);
 
     /// <summary>Returns to reconnect after a pause; USB failures reach the caller as exceptions.</summary>
     void Pump(IScreenTransport transport, ScreenInfo screen)
     {
+        // The last picture is rebuilt for this connection, since a reconnect can reach a different model.
+        var family = transport.Device.Family;
+        var frame = _lastJpeg == null ? null : family.BuildFrame(screen, _lastJpeg);
         while (!_stopping && !_suspended)
         {
             var jpeg = Interlocked.Exchange(ref _pendingJpeg, null);
-            if (jpeg != null) _lastFrame = ScreenProtocol.BuildFrame(screen.HeaderWidth, screen.HeaderHeight, jpeg);
-            if (_lastFrame != null)
+            if (jpeg != null)
             {
-                transport.Write(_lastFrame, _lastFrame.Length);
-                if (ScreenProtocol.NeedsTerminator(_lastFrame.Length)) transport.Write([], 0);
+                frame = family.BuildFrame(screen, jpeg);
+                _lastJpeg = jpeg;
+            }
+            if (frame != null)
+            {
+                family.Send(transport, frame);
                 Interlocked.Increment(ref _framesSent);
             }
             _wake.WaitOne(_keepAlive);

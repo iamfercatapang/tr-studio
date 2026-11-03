@@ -10,8 +10,11 @@ public sealed record ScreenInfo(string Firmware, int Mode, int Width, int Height
     public int JpegQuality { get; init; } = ScreenProtocol.DefaultJpegQuality;
     public bool Round { get; init; }
 
+    /// <summary>Set when the USB model names the product. Otherwise the handshake only gives the panel.</summary>
+    public string? ModelName { get; init; }
+
     /// <summary>The handshake gives the panel, not the product, so other models are named by their size.</summary>
-    public string Model => Mode == ScreenProtocol.CoreVisionMode ? "Core Vision 360" : $"{Width}×{Height} Screen";
+    public string Model => ModelName ?? (Mode == ScreenProtocol.CoreVisionMode ? "Core Vision 360" : $"{Width}×{Height} Screen");
 
     /// <summary>Used until a screen connects. It matches the only model this was tested on.</summary>
     public static ScreenInfo Default { get; } = new("", ScreenProtocol.CoreVisionMode, ThemeRenderer.ScreenSize, ThemeRenderer.ScreenSize) { Round = true };

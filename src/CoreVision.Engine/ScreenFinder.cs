@@ -10,7 +10,7 @@ public static partial class ScreenFinder
 {
     public static IReadOnlySet<(ushort Vid, ushort Pid)> UnsupportedDisplays { get; } = new HashSet<(ushort, ushort)>
     {
-        (0x0416, 0x5302), (0x0416, 0x5406), (0x0416, 0x5408), (0x0416, 0x5409),
+        (0x0416, 0x5302), (0x0416, 0x5406), (0x0416, 0x5409),
     };
 
     public static IScreenTransport Open(Func<IScreenTransport> open, Func<IEnumerable<string>> usbPaths)
@@ -18,11 +18,32 @@ public static partial class ScreenFinder
         try { return open(); }
         catch (ScreenNotFoundException)
         {
-            var other = usbPaths().Select(ParseIds).FirstOrDefault(ids => ids is { } found && UnsupportedDisplays.Contains(found));
-            if (other is { } device)
-                throw new ScreenUnsupportedException($"Found a Thermalright display (USB {device.Vid:X4}:{device.Pid:X4}) that isn't supported yet.");
+            var present = usbPaths().Select(ParseIds).OfType<(ushort Vid, ushort Pid)>().ToList();
+            // A supported model can be plugged in yet not openable, when Windows gave it a driver other than WinUSB.
+            var unopened = ScreenDevice.All.FirstOrDefault(model => present.Contains((model.VendorId, model.ProductId)));
+            if (unopened != null)
+                throw new ScreenUnsupportedException($"Found a {unopened.Name}, but couldn't open it. Its USB driver may not be WinUSB.");
+            var other = present.FirstOrDefault(UnsupportedDisplays.Contains);
+            if (other != default)
+                throw new ScreenUnsupportedException($"Found a Thermalright display (USB {other.Vid:X4}:{other.Pid:X4}) that isn't supported yet.");
             throw;
         }
+    }
+
+    /// <summary>Opens the first model that is plugged in. A model that is present but fails to open stops the search with its error.</summary>
+    public static IScreenTransport OpenFirst(IEnumerable<ScreenDevice> models, Func<ScreenDevice, IScreenTransport> open)
+    {
+        ScreenNotFoundException? missing = null;
+        foreach (var model in models)
+        {
+            try { return open(model); }
+            catch (ScreenNotFoundException e) { missing ??= e; }
+            catch (IOException e) when (e is not ScreenBusyException && model != ScreenDevice.CoreVision)
+            {
+                throw new ScreenUnsupportedException($"Found a {model.Name}, but couldn't open it ({e.Message}). Its USB driver may not be WinUSB.");
+            }
+        }
+        throw missing ?? new ScreenNotFoundException("Screen is not connected");
     }
 
     public static (ushort Vid, ushort Pid)? ParseIds(string path)

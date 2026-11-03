@@ -8,19 +8,28 @@ namespace CoreVision.Engine;
 /// <summary>Minimal WinUSB access to the cooler screen, with no third-party USB library.</summary>
 public sealed class WinUsbDevice : IScreenTransport
 {
-    const byte EndpointOut = 0x01;
-    const byte EndpointIn = 0x81;
+    const byte EndpointIn = ScreenDevice.EndpointIn;
     const uint PipeTransferTimeout = 0x03;
     const int ErrorAccessDenied = 5, ErrorSharingViolation = 32, ErrorBusy = 170;
 
     readonly SafeFileHandle _file;
     readonly IntPtr _usb;
+    readonly byte _endpointOut;
 
-    WinUsbDevice(SafeFileHandle file, IntPtr usb) { _file = file; _usb = usb; }
-
-    public static WinUsbDevice Open(ushort vid = ScreenProtocol.VendorId, ushort pid = ScreenProtocol.ProductId, uint timeoutMs = 2000)
+    WinUsbDevice(SafeFileHandle file, IntPtr usb, ScreenDevice device)
     {
-        var path = FindDevicePath(vid, pid);
+        _file = file;
+        _usb = usb;
+        Device = device;
+        _endpointOut = device.EndpointOut;
+    }
+
+    public ScreenDevice Device { get; }
+
+    public static WinUsbDevice Open(ScreenDevice? model = null, uint timeoutMs = 2000)
+    {
+        model ??= ScreenDevice.CoreVision;
+        var path = FindDevicePath(model.VendorId, model.ProductId);
         var file = CreateFile(path, 0xC0000000, 3, IntPtr.Zero, 3, 0x80 | 0x40000000, IntPtr.Zero);
         if (file.IsInvalid) throw OpenFailure(Marshal.GetLastWin32Error());
         if (!WinUsb_Initialize(file, out var usb))
@@ -29,8 +38,8 @@ public sealed class WinUsbDevice : IScreenTransport
             file.Dispose();
             throw OpenFailure(error);
         }
-        var device = new WinUsbDevice(file, usb);
-        foreach (var pipe in new[] { EndpointOut, EndpointIn })
+        var device = new WinUsbDevice(file, usb, model);
+        foreach (var pipe in new[] { model.EndpointOut, EndpointIn })
             WinUsb_SetPipePolicy(usb, pipe, PipeTransferTimeout, sizeof(uint), ref timeoutMs);
         WinUsb_FlushPipe(usb, EndpointIn); // drop any reply left by an earlier session
         return device;
@@ -42,7 +51,7 @@ public sealed class WinUsbDevice : IScreenTransport
 
     public void Write(byte[] data, int length)
     {
-        if (!WinUsb_WritePipe(_usb, EndpointOut, data, (uint)length, out var written, IntPtr.Zero))
+        if (!WinUsb_WritePipe(_usb, _endpointOut, data, (uint)length, out var written, IntPtr.Zero))
             throw new Win32Exception(Marshal.GetLastWin32Error(), "USB write failed");
         if (written != length) throw new IOException($"Short USB write: {written} of {length}");
     }

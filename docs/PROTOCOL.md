@@ -25,10 +25,60 @@ Only mode 3 has been tested on real hardware. The rest come from TRCC's code.
 
 ## Other display families
 
-These use different protocols, and the app only names them. No data is sent to them.
+These use different protocols. The app only names them and sends them nothing, except the Trofeo Vision, which it drives experimentally.
 
-- USB 0416:5302, 0416:5406, 0416:5408 and 0416:5409 each have their own transfer loop in `USBLCDNEW`.
+- USB 0416:5302, 0416:5406 and 0416:5409 each have their own transfer loop in `USBLCDNEW`.
+- 0416:5408 (Trofeo Vision 9.16") is decoded below and driven by `TrofeoProtocol`, but untested on hardware.
 - TRCC also has HID (`UsbHid.dll`) and SCSI (`USBLCD.exe`) routes, which are not decoded.
+
+## Trofeo Vision (USB 0416:5408)
+
+Decoded from `ThreadSendDeviceDataLY` in `USBLCDNEW.dll` of TRCC 2.1.2 and 2.1.4, whose code is identical.
+TRCC calls this family "LY". **Nothing here has been tried on a real screen.**
+
+### Connection
+
+- TRCC opens it with LibUsbDotNet: configuration 1, interface 0.
+- Bulk OUT endpoint **0x09**, bulk IN endpoint 0x81. (The Core Vision loop passes 1 for its known OUT 0x01, so the value is the endpoint address.)
+- Which Windows driver the screen uses (WinUSB or libusb) is unknown.
+
+### Handshake
+
+Write 2048 bytes: these 16, then zeros.
+
+`02 FF 00 00 00 00 00 00 01 00 00 00 00 00 00 00`
+
+Read 512 bytes. TRCC waits 200 ms, then cancels whichever transfer hasn't finished. The reply is good when byte 0 is 3, byte 1 is `FF` and byte 8 is 1.
+
+| Reply bytes | Meaning |
+| --- | --- |
+| 16-19 | Serial, shown by TRCC as hex |
+| 20 | Panel type. Values of 3 or less are treated as 1. The mode is 64 plus this. |
+| 22 | The sub mode is 1 plus this |
+
+Mode 65 or 66 is 1920x462 in the size table above. TRCC sends a JPEG, as for the Core Vision.
+
+### Sending a frame
+
+The JPEG is split into chunks of 496 bytes. There are always `size / 496 + 1` chunks, so a JPEG whose size is a multiple of 496 ends with an empty chunk.
+Each chunk goes in a 512-byte packet:
+
+| Packet bytes | Value |
+| --- | --- |
+| 0 | 1 |
+| 1 | `FF` |
+| 2-5 | JPEG size (little-endian) |
+| 6-7 | Bytes of JPEG in this packet: 496, or the remainder in the last one |
+| 8 | 1 |
+| 9-10 | Chunk count (little-endian) |
+| 11-12 | Chunk index from 0 (little-endian) |
+| 13-15 | 0 |
+| 16-511 | JPEG bytes, zero-padded |
+
+- Empty packets are added until the count is a multiple of 4, so the transfer is a multiple of 2048 bytes.
+- The packets are written 4096 bytes at a time, with 2048 for a final half block.
+- After each frame, TRCC reads 512 bytes from the IN endpoint and doesn't check their content.
+- TRCC's shared buffer limits a frame to 691,200 bytes, header included.
 
 ## Connection
 

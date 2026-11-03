@@ -82,7 +82,7 @@ Only one app can drive the screen at a time, so close TRCC before you start TR S
 
 ### Tested hardware
 
-I've only tested TR Studio on my own PC, with a Core Vision 360 and its 480×480 screen. The same protocol reports other screen sizes and the app has code for them, but I haven't been able to try any.
+I've only tested TR Studio on my own PC, with a Core Vision 360 and its 480×480 screen. The same protocol reports other screen sizes and the app has code for them, but I haven't been able to try any. Support for the Trofeo Vision 9.16" (1920×462) is experimental: it was worked out from TRCC without the screen, and themes show in the middle of the wide screen for now. If you own one, I'd love to hear whether it works.
 
 ## Install
 

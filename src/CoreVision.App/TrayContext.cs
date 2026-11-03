@@ -61,7 +61,8 @@ sealed class TrayContext : ApplicationContext
         _weather = new WeatherService(_settings.WeatherPlace, _settings.WeatherUnits, Log);
         _sensors = new SensorMonitor(() => new LibreSensorSource(), log: Log);
         _sensors.Start();
-        _link = new ScreenLink(() => ScreenFinder.Open(() => WinUsbDevice.Open(), WinUsbDevice.PresentUsbPaths), log: Log);
+        _link = new ScreenLink(() => ScreenFinder.Open(() => ScreenFinder.OpenFirst(ScreenDevice.All, model => WinUsbDevice.Open(model)),
+            WinUsbDevice.PresentUsbPaths), log: Log);
 
         _ffmpeg = ThemeStore.FindFfmpeg();
         _player = new ThemePlayer(_themes.Load(_settings.ThemePath), () => _sensors.Current, _link.Submit,
