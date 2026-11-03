@@ -3,8 +3,8 @@ using CoreVision.Engine;
 namespace CoreVision.App;
 
 /// <summary>
-/// Fetches the forecast from Open-Meteo every 15 minutes for the chosen place. This is TR Studio's
-/// only use of the internet, and all it sends is the place's coordinates. A failed fetch keeps the
+/// Fetches the forecast from Open-Meteo every 15 minutes for the chosen place. Besides the update
+/// check, this is TR Studio's only use of the internet, and all it sends is the place's coordinates. A failed fetch keeps the
 /// last forecast, which turns stale after two hours, and tries again sooner.
 /// </summary>
 sealed class WeatherService : IDisposable

@@ -19,5 +19,8 @@ dotnet publish (Join-Path $root 'src\CoreVision.App') -c Release -r win-x64 --se
 if ($LASTEXITCODE -ne 0) { throw 'Publish failed.' }
 Copy-Item "$ffmpeg\*" $publish -Recurse
 
-& $compiler (Join-Path $root 'installer\TRStudio.iss')
+# The installer takes the app's own version, so the in-app updater and the file name always agree.
+$version = ([xml](Get-Content (Join-Path $root 'src\CoreVision.App\CoreVision.App.csproj'))).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+if (-not $version) { throw 'No <Version> in CoreVision.App.csproj.' }
+& $compiler "/DAppVersion=$version" (Join-Path $root 'installer\TRStudio.iss')
 if ($LASTEXITCODE -ne 0) { throw 'Installer build failed.' }

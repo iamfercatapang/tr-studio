@@ -24,6 +24,7 @@ sealed class TrayContext : ApplicationContext
     readonly SensorMonitor _sensors;
     readonly MediaMonitor _media;
     readonly WeatherService _weather;
+    readonly UpdateService _updates;
     readonly ThemePlayer _player;
     readonly ThemeStore _themes;
     readonly string? _ffmpeg;
@@ -59,6 +60,9 @@ sealed class TrayContext : ApplicationContext
 
         _media = new MediaMonitor(Log);
         _weather = new WeatherService(_settings.WeatherPlace, _settings.WeatherUnits, Log);
+        _updates = new UpdateService(_settings.CheckForUpdates, Log);
+        _updates.Changed += () => _ui.Post(_ => SendUpdate(), null);
+        _updates.Installing += () => _ui.Post(_ => Quit(), null);
         _sensors = new SensorMonitor(() => new LibreSensorSource(), log: Log);
         _sensors.Start();
         _link = new ScreenLink(() => ScreenFinder.Open(() => ScreenFinder.OpenFirst(ScreenDevice.All, model => WinUsbDevice.Open(model)),
@@ -447,6 +451,24 @@ sealed class TrayContext : ApplicationContext
 
     public WeatherPlace? WeatherPlace => _settings.WeatherPlace;
 
+    public void SendUpdate() => _window?.Post(_updates.ToJson());
+
+    public void CheckForUpdate() => _ = _updates.CheckAsync();
+
+    /// <summary>The installer opens TR Studio again when it is done, so this one quits once it starts.</summary>
+    public void InstallUpdate()
+    {
+        Log($"Update requested from {UpdateService.Current}");
+        _ = _updates.InstallAsync();
+    }
+
+    public void SetAutomaticUpdates(bool enabled)
+    {
+        _settings = _settings with { CheckForUpdates = enabled };
+        SaveSettings();
+        _updates.Automatic = enabled;
+    }
+
     public void ControlMedia(string? action)
     {
         if (action != null) _media.Send(action);
@@ -579,6 +601,7 @@ sealed class TrayContext : ApplicationContext
             _sensors.Dispose();
             _media.Dispose();
             _weather.Dispose();
+            _updates.Dispose();
             _icon.Dispose();
         }
         base.Dispose(disposing);

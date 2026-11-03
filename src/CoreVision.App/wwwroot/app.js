@@ -116,6 +116,7 @@ const ICONS = {
   Down: '<path d="M8 3v10M3.5 8.5L8 13l4.5-4.5"/>',
   Remove: '<path d="M4 4l8 8M12 4l-8 8"/>',
   Warning: '<path d="M8 2l6.5 11.5h-13z"/><path d="M8 6.5v3M8 11.5v.01"/>',
+  Update: '<path d="M8 2v8M4.5 6.5L8 10l3.5-3.5"/><path d="M2.5 11v1.5a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V11"/>',
   Shown: '<path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/>',
   Hidden: '<path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z"/><path d="M3 13L13 3"/>',
 };
@@ -774,6 +775,56 @@ function renderStartupOptions() {
     app.startup = enabled;
     send({ type: 'startup', enabled });
   }));
+}
+
+function confirmUpdate() {
+  const update = app.update;
+  confirmDialog(`Install TR Studio ${update.version}?`,
+    'TR Studio closes, installs the update and opens again. The cooler screen goes dark for a few seconds. Your themes and settings stay.', [
+      { label: 'Not Now' },
+      { label: 'Install', className: 'primary', run: () => send({ type: 'installUpdate' }) },
+    ]);
+}
+
+function updateSummary(update) {
+  switch (update.state) {
+    case 'checking': return 'Checking for updates…';
+    case 'available': return `Version ${update.version} is ready to install.`;
+    case 'downloading': return `Downloading version ${update.version}… ${update.progress}%`;
+    case 'installing': return `Installing version ${update.version}. TR Studio opens again when it’s done.`;
+    case 'upToDate': return 'You have the latest version.';
+    case 'failed': return update.error ?? 'Couldn’t check for updates.';
+    default: return '';
+  }
+}
+
+function renderUpdate() {
+  const update = app.update;
+  if (!update) return;
+  const busy = ['checking', 'downloading', 'installing'].includes(update.state);
+  const offered = update.version && ['available', 'downloading', 'installing'].includes(update.state);
+  const button = $('updateButton');
+  button.hidden = !offered && !(update.state === 'failed' && update.version);
+  button.disabled = busy;
+  $('updateLabel').textContent = update.state === 'downloading' ? `Downloading ${update.progress}%`
+    : update.state === 'installing' ? 'Installing…'
+    : update.state === 'failed' ? 'Update failed. Try Again' : `Update to ${update.version}`;
+
+  $('updateOptions').replaceChildren(plainToggle('Check for Updates Automatically', update.automatic, (enabled) => {
+    update.automatic = enabled;
+    send({ type: 'autoUpdate', enabled });
+  }));
+  const actions = element('div', { className: 'update-actions' },
+    element('button', { type: 'button', textContent: 'Check Now', disabled: busy, onclick: () => send({ type: 'checkUpdate' }) }));
+  if (update.version && (update.state === 'available' || update.state === 'failed')) {
+    actions.append(element('button', { type: 'button', className: 'primary', textContent: `Install ${update.version}`, onclick: confirmUpdate }));
+  }
+  const summary = updateSummary(update);
+  const children = [element('p', { className: 'update-version', textContent: `TR Studio ${update.current}${summary ? ` · ${summary}` : ''}` })];
+  if (update.state === 'failed') children[0].classList.add('warning');
+  if (update.notes && offered) children.push(element('p', { className: 'update-notes', textContent: update.notes }));
+  children.push(actions);
+  $('updateStatus').replaceChildren(...children);
 }
 
 function renderScreenOptions() {
@@ -2370,6 +2421,10 @@ const handlers = {
     if (message.width === undefined) return;
     applyCaptureSource(target, { captureX: message.x, captureY: message.y, captureWidth: message.width, captureHeight: message.height });
   },
+  update(message) {
+    app.update = message;
+    renderUpdate();
+  },
   captureSources(message) {
     app.captureSources = message;
     if ($('captureDialog').open) renderCaptureSources();
@@ -2402,6 +2457,7 @@ $('addShape').onclick = () => addElement(NEW_SHAPE);
 $('addCapture').onclick = () => openCaptureDialog('new');
 document.querySelectorAll('#captureTabs button').forEach((button) => button.addEventListener('click', () => { app.captureTab = button.dataset.tab; renderCaptureSources(); }));
 $('captureRefresh').onclick = requestCaptureSources;
+$('updateButton').onclick = confirmUpdate;
 $('captureCancel').onclick = () => $('captureDialog').close();
 $('addMusic').onclick = () => addElement(NEW_MUSIC);
 $('addWeather').onclick = () => addElement(NEW_WEATHER);

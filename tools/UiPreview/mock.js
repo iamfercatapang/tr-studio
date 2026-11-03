@@ -158,6 +158,27 @@ window.chrome.webview = {
     if (message.type === 'alerts') { const { type, ...settings } = message; window.mock.alertSettings = settings; }
     if (message.type === 'exportPalette') emit({ type: 'notice', message: 'Palette exported' });
     if (message.type === 'importPalette') emit({ type: 'palette', palette: { name: 'Essentials', colors: ['#112233', '#445566'] } });
+    // Updates: a newer release is waiting. Install counts up the download, then shows the installer starting.
+    const update = (fields) => { window.mock.update = { ...window.mock.update, ...fields }; emit({ type: 'update', ...window.mock.update }); };
+    if (message.type === 'ready') {
+      window.mock.update = { current: '1.3.0', automatic: true, state: 'available', version: '1.4.0', progress: 0, error: null,
+        notes: '- Picture-in-Picture can show a window or a whole screen.\n- In-app updates.' };
+      update({});
+    }
+    if (message.type === 'autoUpdate') update({ automatic: message.enabled });
+    if (message.type === 'checkUpdate') {
+      update({ state: 'checking' });
+      setTimeout(() => update({ state: 'available' }), 600);
+    }
+    if (message.type === 'installUpdate') {
+      let progress = 0;
+      const timer = setInterval(() => {
+        progress += 20;
+        if (progress <= 100) { update({ state: 'downloading', progress }); return; }
+        clearInterval(timer);
+        update({ state: 'installing' });
+      }, 250);
+    }
     if (message.type === 'ready') {
       emit({ type: 'palettes', palettes: [] });
       window.mock.playing = true;

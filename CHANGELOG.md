@@ -3,6 +3,8 @@
 ## Unreleased
 
 - **Picture-in-Picture can show a window or a whole screen.** The PiP button opens a picker with Window, Screen and Area tabs, each with a live thumbnail. A window stays visible on the cooler when you move it or cover it with other windows, and is found again after the app restarts. While it's minimized, its last picture stays up. Choose Source… in the Editor changes what an existing PiP shows.
+- **Updates from inside the app.** TR Studio checks GitHub for a new version soon after it starts and every 12 hours. When there is one, an Update button appears in the sidebar. Click it and TR Studio downloads the installer, checks it against the release's SHA-256, installs it silently and opens again, all in a few seconds. Settings has Check Now and a switch to turn the automatic check off. The check sends nothing about your PC. Copies older than this version need one last manual install.
+- The installer takes its version from the app, so the two can't disagree.
 
 ## 1.3.0 (Nov 3, 2026)
 

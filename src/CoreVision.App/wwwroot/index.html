@@ -43,6 +43,7 @@
       </div>
     </section>
     <div class="alert-banner" id="alertBanner" role="alert" hidden></div>
+    <button type="button" class="update-button" id="updateButton" data-icon="Update" hidden><span id="updateLabel"></span></button>
     <div class="status" id="status" role="status">
       <span class="status-dot"></span><span id="statusText">Starting</span>
     </div>
@@ -100,6 +101,12 @@
         <div class="section-header"><h3 id="alertsTitle">Warnings</h3></div>
         <p class="alerts-intro">When a reading stays past its limit for a few seconds, the cooler screen shows a warning over your theme and Windows shows a notification.</p>
         <div class="alert-rules" id="alertRules"></div>
+      </section>
+      <section class="alerts-panel" aria-labelledby="updatesTitle">
+        <div class="section-header"><h3 id="updatesTitle">Updates</h3></div>
+        <p class="alerts-intro">TR Studio looks for a new version on GitHub. Installing one takes a few seconds, and the app opens again by itself. The check sends nothing about your PC.</p>
+        <div class="settings-options" id="updateOptions"></div>
+        <div class="update-status" id="updateStatus" aria-live="polite"></div>
       </section>
     </section>
 

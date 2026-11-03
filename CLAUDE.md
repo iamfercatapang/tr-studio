@@ -19,5 +19,6 @@ Tray app that drives the Thermalright Core Vision 360 AIO screen. .NET 8 WinForm
 - The product name is TR Studio. Internal names stay as they are: `CoreVision.App.exe`, the `CoreVision.*` namespaces, `C:\ProgramData\CoreVisionStudio`, the `CoreVisionStudio` startup task and mutex.
 - A sensor that can't be read shows a dash and never raises a warning.
 - Windows' media objects only work on the thread that created them: keep `MediaMonitor`'s calls on its own thread.
-- The weather is TR Studio's only internet use. It sends only the chosen city's coordinates to Open-Meteo.
+- TR Studio uses the internet for two things only. The weather sends only the chosen city's coordinates to Open-Meteo. The update check asks GitHub for the latest release of `iamfercatapang/tr-studio` and sends nothing about the PC; it can be turned off in Settings.
+- Updates: `UpdateService` installs only an asset named `TRStudio-<version>-Setup.exe` whose SHA-256 matches the digest GitHub gives for it, and runs it with `/VERYSILENT /UPDATE=1`. The installer waits for the app to quit and starts it again. Bump `<Version>` in `CoreVision.App.csproj` and tag the release `v<version>`, or installed copies won't see it as newer.
 - Fan and pump speeds are read-only. Fan control was considered and left out: it needs admin and a kernel driver, and FanControl (Rem0o) already does it. Don't reverse engineer FanControl.

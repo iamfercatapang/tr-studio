@@ -120,6 +120,7 @@ sealed class MainWindow : Form
                     _app.SendPalettes();
                     _app.SendNowPlaying();
                     _app.SendWeather();
+                    _app.SendUpdate();
                     break;
                 case "refresh":
                     _app.SendState();
@@ -196,6 +197,15 @@ sealed class MainWindow : Form
                     break;
                 case "pickRegion":
                     _ = PickRegionAsync();
+                    break;
+                case "checkUpdate":
+                    _app.CheckForUpdate();
+                    break;
+                case "installUpdate":
+                    _app.InstallUpdate();
+                    break;
+                case "autoUpdate":
+                    _app.SetAutomaticUpdates((bool?)message["enabled"] == true);
                     break;
                 case "listCaptureSources":
                     _ = ListCaptureSourcesAsync();
