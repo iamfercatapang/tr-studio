@@ -48,11 +48,22 @@ public class PlaylistTests
     }
 
     [Fact]
-    public void Repeats_and_extra_themes_are_dropped()
+    public void Repeats_are_dropped()
     {
-        var usable = new ThemePlaylist(true, [A, A, B, C, "d.json"]).Usable([A, B, C, "d.json"]);
+        var usable = new ThemePlaylist(true, [A, A, B, C, B]).Usable([A, B, C]);
 
         Assert.Equal([A, B, C], usable.Paths!);
+    }
+
+    [Fact]
+    public void Every_theme_can_be_in_the_playlist()
+    {
+        var themes = Enumerable.Range(1, 14).Select(i => (string?)$"theme{i}.json").Prepend(null).ToList();
+
+        var usable = new ThemePlaylist(true, themes).Usable(themes);
+
+        Assert.Equal(themes, usable.Paths!);
+        Assert.True(usable.Enabled);
     }
 
     [Theory]

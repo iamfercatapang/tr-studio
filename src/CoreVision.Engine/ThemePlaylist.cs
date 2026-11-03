@@ -3,13 +3,16 @@ namespace CoreVision.Engine;
 /// <summary>Themes shown in turn, in list order. A null path is the System Stats theme.</summary>
 public sealed record ThemePlaylist(bool Enabled = false, IReadOnlyList<string?>? Paths = null, int Seconds = ThemePlaylist.DefaultSeconds)
 {
-    public const int MinThemes = 2, MaxThemes = 3, MinSeconds = 5, MaxSeconds = 600, DefaultSeconds = 30;
+    public const int MinThemes = 2, MinSeconds = 5, MaxSeconds = 600, DefaultSeconds = 30;
 
-    /// <summary>Drops themes that no longer exist. With too few left, the playlist turns itself off.</summary>
+    /// <summary>
+    /// Drops themes that no longer exist and repeats, so the list holds at most every theme once.
+    /// With too few left, the playlist turns itself off.
+    /// </summary>
     public ThemePlaylist Usable(IEnumerable<string?> available)
     {
         var existing = available.ToHashSet();
-        var paths = (Paths ?? []).Where(existing.Contains).Distinct().Take(MaxThemes).ToList();
+        var paths = (Paths ?? []).Where(existing.Contains).Distinct().ToList();
         return new ThemePlaylist(Enabled && paths.Count >= MinThemes, paths, Math.Clamp(Seconds, MinSeconds, MaxSeconds));
     }
 

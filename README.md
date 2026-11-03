@@ -38,7 +38,7 @@ TR Studio comes with built-in themes, including Halo, Halo Duo Split, Twin Arc, 
 
 ### Theme Playlist
 
-Pick 2 or 3 themes and the cooler cycles through them in the order you set, every 5 seconds to 10 minutes, with a crossfade between each one. The playlist pauses while you're in the Editor.
+Pick 2 or more themes, as many as you have, and the cooler cycles through them in the order you set, every 5 seconds to 10 minutes, with a crossfade between each one. The playlist pauses while you're in the Editor.
 
 ### Editor
 

@@ -120,7 +120,7 @@ const ICONS = {
   Shown: '<path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/>',
   Hidden: '<path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z"/><path d="M3 13L13 3"/>',
 };
-const PLAYLIST = { minThemes: 2, maxThemes: 3 };
+const PLAYLIST = { minThemes: 2 };
 const ALERT_RULES = [
   { kind: 'Pump', on: 'pump', limit: 'pumpMinRpm', metric: 'PumpRpm', iconName: 'Fan', label: 'AIO Pump', limitLabel: 'Warn below', unit: 'RPM', min: 100, max: 3000, step: 50, fallback: 500 },
   { kind: 'CpuTemp', on: 'cpuTemp', limit: 'cpuMaxTemp', metric: 'CpuTemp', iconName: 'Chip', label: 'CPU Temperature', limitLabel: 'Warn at', unit: '°C', min: 50, max: 110, step: 1, fallback: 90 },
@@ -673,13 +673,12 @@ function renderPlaylist() {
   $('playlistOn').disabled = tooFew;
   $('playlistList').replaceChildren(...paths.map(playlistRow));
   if (tooFew) {
-    $('playlistList').append(element('li', { className: 'playlist-empty', textContent: `Add ${PLAYLIST.minThemes} or ${PLAYLIST.maxThemes} themes to show them in turn. Their order here is the order they play.` }));
+    $('playlistList').append(element('li', { className: 'playlist-empty', textContent: `Add ${PLAYLIST.minThemes} or more themes to show them in turn. Their order here is the order they play.` }));
   }
-  const full = paths.length >= PLAYLIST.maxThemes;
   const left = app.themes.filter((theme) => !paths.includes(theme.path));
-  const prompt = element('option', { value: '', textContent: full ? `Up to ${PLAYLIST.maxThemes} themes` : 'Choose…' });
+  const prompt = element('option', { value: '', textContent: left.length ? 'Choose…' : 'All themes added' });
   $('playlistAdd').replaceChildren(prompt, ...left.map((theme, index) => element('option', { value: index, textContent: theme.name })));
-  $('playlistAdd').disabled = full || !left.length;
+  $('playlistAdd').disabled = !left.length;
   $('playlistAdd').onchange = (event) => {
     if (event.target.value === '') return;
     paths.push(left[Number(event.target.value)].path);

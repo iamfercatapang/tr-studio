@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- **The Theme Playlist can hold every theme you have**, not just 3. Add themes until none are left.
+- **Run at Windows Startup is on for new installs.** An existing install keeps its choice, and the switch in Settings turns it off.
+- The Updates panel in Settings drops its intro text.
+
 ## 1.4.0 (Nov 4, 2026)
 
 - **Picture-in-Picture can show a window or a whole screen.** The PiP button opens a picker with Window, Screen and Area tabs, each with a live thumbnail. A window stays visible on the cooler when you move it or cover it with other windows, and is found again after the app restarts. While it's minimized, its last picture stays up. Choose Source… in the Editor changes what an existing PiP shows.

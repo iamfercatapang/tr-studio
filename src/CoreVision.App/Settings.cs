@@ -11,6 +11,9 @@ sealed record Settings(string? ThemePath = null, int Rotation = 0, bool PausedTr
 
     static string FilePath => Path.Combine(DataFolder, "settings.json");
 
+    /// <summary>False on a new install, before anything has been saved.</summary>
+    public static bool Exists => File.Exists(FilePath);
+
     public static Settings Load()
     {
         try { return JsonSerializer.Deserialize<Settings>(File.ReadAllText(FilePath)) ?? new Settings(); }

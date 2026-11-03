@@ -41,6 +41,7 @@ sealed class TrayContext : ApplicationContext
     bool _playlistPaused;
     MainWindow? _window;
     readonly Lazy<Task<IReadOnlyList<SpecRow>>> _specs;
+    readonly bool _firstRun = !Settings.Exists;
     Settings _settings = Settings.Load();
     int _previewPending;
 
@@ -93,7 +94,9 @@ sealed class TrayContext : ApplicationContext
         SystemEvents.PowerModeChanged += OnPowerModeChanged;
         _link.Start();
 
-        Task.Run(() =>
+        // A new install starts with Windows; after that, the switch in Settings decides.
+        if (_firstRun) SetStartup(true);
+        else Task.Run(() =>
         {
             try { WindowsStartup.PointAtThisCopy(); }
             catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception or IOException)
