@@ -8,7 +8,7 @@ using System.Globalization;
 namespace CoreVision.Engine;
 
 /// <summary>Draws a theme's elements. Readings that cannot be trusted show a dash, never a number.</summary>
-public sealed class ThemeRenderer : IDisposable
+public sealed partial class ThemeRenderer : IDisposable
 {
     public const int ScreenSize = 480;
     const string NoValue = "–";
@@ -76,7 +76,7 @@ public sealed class ThemeRenderer : IDisposable
     readonly Dictionary<(string Family, bool Bold, bool Italic), (FontFamily Family, FontStyle Style)> _fonts = [];
 
     public byte[] Render(IBackground background, IReadOnlyList<ElementSpec> elements, Stats stats, DateTime now, float dim = 0,
-        IReadOnlyList<Alert>? alerts = null)
+        IReadOnlyList<Alert>? alerts = null, NowPlaying? media = null, WeatherReport? weather = null)
     {
         using var g = Graphics.FromImage(_canvas);
         g.SmoothingMode = SmoothingMode.AntiAlias;
@@ -101,6 +101,8 @@ public sealed class ThemeRenderer : IDisposable
             else if (elements[i].Kind == ElementKind.Bar) DrawBar(g, i, elements[i], stats);
             else if (elements[i].Kind == ElementKind.Shape) DrawShape(g, elements[i]);
             else if (elements[i].Kind == ElementKind.Capture) DrawCapture(g, elements[i], scale, capturesUsed);
+            else if (elements[i].Kind == ElementKind.Music) DrawMusic(g, elements[i], media);
+            else if (elements[i].Kind == ElementKind.Weather) DrawWeather(g, elements[i], weather);
             else Draw(g, elements[i], stats, now);
         }
         foreach (var key in _captures.Keys.Where(key => !capturesUsed.Contains(key)).ToList())
@@ -700,6 +702,7 @@ public sealed class ThemeRenderer : IDisposable
         _canvas.Dispose();
         _fadeFrom?.Dispose();
         foreach (var capture in _captures.Values) capture.Dispose();
+        _artImage?.Dispose();
         foreach (var (family, _) in _fonts.Values) family.Dispose();
     }
 }

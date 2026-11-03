@@ -22,8 +22,11 @@ sealed class TrayContext : ApplicationContext
     readonly FileLog _log = new();
     readonly ScreenLink _link;
     readonly SensorMonitor _sensors;
+    readonly MediaMonitor _media;
+    readonly WeatherService _weather;
     readonly ThemePlayer _player;
     readonly ThemeStore _themes;
+    readonly string? _ffmpeg;
     readonly PaletteStore _palettes = new(Path.Combine(Settings.DataFolder, "palettes.json"));
     readonly NotifyIcon _icon;
     readonly ToolStripMenuItem _statusItem = new("Starting") { Enabled = false };
@@ -54,16 +57,28 @@ sealed class TrayContext : ApplicationContext
         _icon = new NotifyIcon { Icon = AppIcon.Load(SystemInformation.SmallIconSize), Text = "TR Studio", ContextMenuStrip = menu, Visible = true };
         _icon.DoubleClick += (_, _) => ShowWindow();
 
+        _media = new MediaMonitor(Log);
+        _weather = new WeatherService(_settings.WeatherPlace, _settings.WeatherUnits, Log);
         _sensors = new SensorMonitor(() => new LibreSensorSource(), log: Log);
         _sensors.Start();
         _link = new ScreenLink(() => ScreenFinder.Open(() => WinUsbDevice.Open(), WinUsbDevice.PresentUsbPaths), log: Log);
 
-        var ffmpeg = ThemeStore.FindFfmpeg();
+        _ffmpeg = ThemeStore.FindFfmpeg();
         _player = new ThemePlayer(_themes.Load(_settings.ThemePath), () => _sensors.Current, _link.Submit,
-            spec => Backgrounds.Create(spec, ffmpeg, Log, _player!.Screen.Width, _player.Screen.Height), Log);
+            spec => Backgrounds.Create(spec, _ffmpeg, Log, _player!.Screen.Width, _player.Screen.Height), Log) { Media = () => _media.Current, Weather = () => _weather.Current };
         _player.Rotation = _settings.Rotation;
         _player.FrameRendered += OnFrameRendered;
         _player.Start();
+        _media.Changed += () =>
+        {
+            _player.Invalidate();
+            _ui.Post(_ => SendNowPlaying(), null);
+        };
+        _weather.Changed += () =>
+        {
+            _player.Invalidate();
+            _ui.Post(_ => SendWeather(), null);
+        };
         _playlistTimer.Tick += (_, _) => ShowNextInPlaylist();
         RestartPlaylist();
         _alertTimer.Tick += (_, _) => CheckAlerts();
@@ -361,7 +376,82 @@ sealed class TrayContext : ApplicationContext
         }
     }
 
-    /// <summary>Thumbnails are rendered off the UI thread. Video and GIF cards use a label instead.</summary>
+    /// <summary>The sidebar player works out the position itself from this, so it needs no message every second.</summary>
+    public void SendNowPlaying()
+    {
+        var media = _media.Current;
+        JsonNode? song = media == null ? null : new JsonObject
+        {
+            ["title"] = media.Title,
+            ["artist"] = media.Artist,
+            ["playing"] = media.IsPlaying,
+            ["position"] = media.PositionAt(DateTime.UtcNow)?.TotalSeconds,
+            ["duration"] = media.Duration?.TotalSeconds,
+            ["art"] = media.Art is { } art ? $"data:{ImageType(art)};base64,{Convert.ToBase64String(art)}" : null,
+            ["canPlayPause"] = media.CanPlayPause,
+            ["canNext"] = media.CanNext,
+            ["canPrevious"] = media.CanPrevious,
+        };
+        _window?.Post(new JsonObject { ["type"] = "nowPlaying", ["media"] = song });
+    }
+
+    static string ImageType(byte[] bytes) => bytes is [0xFF, 0xD8, ..] ? "image/jpeg" : "image/png";
+
+    public void SendWeather()
+    {
+        var report = _weather.Current;
+        _window?.Post(new JsonObject
+        {
+            ["type"] = "weather",
+            ["place"] = _settings.WeatherPlace?.Label,
+            ["units"] = _settings.WeatherUnits.ToString(),
+            ["error"] = _weather.Error,
+            ["report"] = report == null ? null : new JsonObject
+            {
+                ["temperature"] = Math.Round(report.Temperature),
+                ["description"] = WeatherReport.Describe(report.Code),
+                ["high"] = Math.Round(report.High),
+                ["low"] = Math.Round(report.Low),
+                ["fetched"] = report.FetchedUtc.ToString("O"),
+                ["stale"] = report.IsStale(DateTime.UtcNow),
+            },
+        });
+    }
+
+    public async Task SearchWeatherAsync(string query)
+    {
+        var message = new JsonObject { ["type"] = "weatherResults", ["query"] = query };
+        try
+        {
+            var places = await _weather.SearchAsync(query);
+            message["places"] = JsonSerializer.SerializeToNode(places.Select(place => new
+            {
+                place.Label, place.Name, place.Region, place.Country, place.Latitude, place.Longitude,
+            }), PageJson);
+        }
+        catch (Exception e) when (e is HttpRequestException or InvalidDataException or TaskCanceledException)
+        {
+            Log($"Place search failed: {e.Message}");
+            message["error"] = "Couldn’t reach the weather service. Check your internet connection.";
+        }
+        _window?.Post(message);
+    }
+
+    public void SetWeather(WeatherPlace? place, WeatherUnits units)
+    {
+        _settings = _settings with { WeatherPlace = place, WeatherUnits = units };
+        SaveSettings();
+        _weather.Configure(place, units);
+    }
+
+    public WeatherPlace? WeatherPlace => _settings.WeatherPlace;
+
+    public void ControlMedia(string? action)
+    {
+        if (action != null) _media.Send(action);
+    }
+
+    /// <summary>Thumbnails are rendered off the UI thread. GIF and video cards show a still frame.</summary>
     public void SendState()
     {
         var entries = _themes.List();
@@ -409,8 +499,7 @@ sealed class TrayContext : ApplicationContext
 
     string? Thumbnail(ThemeRenderer renderer, Theme theme)
     {
-        if (theme.Background.Kind is BackgroundKind.Video or BackgroundKind.Gif) return null;
-        using var background = Backgrounds.Create(theme.Background, log: Log, width: _player.Screen.Width, height: _player.Screen.Height);
+        using var background = Backgrounds.Still(theme.Background, _ffmpeg, Log, _player.Screen.Width, _player.Screen.Height);
         return Convert.ToBase64String(renderer.Render(background, theme.Elements, _sensors.Current, DateTime.Now, theme.Dim));
     }
 
@@ -487,6 +576,8 @@ sealed class TrayContext : ApplicationContext
             _player.Dispose();
             _link.Dispose();
             _sensors.Dispose();
+            _media.Dispose();
+            _weather.Dispose();
             _icon.Dispose();
         }
         base.Dispose(disposing);

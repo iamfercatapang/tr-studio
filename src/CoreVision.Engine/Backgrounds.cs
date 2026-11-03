@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -37,6 +38,30 @@ public static class Backgrounds
         }
     }
 
+    /// <summary>
+    /// A single frame for theme cards: a GIF's first frame, or a typical frame of a video. Nothing keeps running afterwards.
+    /// Falls back to the plain color like <see cref="Create"/>.
+    /// </summary>
+    public static IBackground Still(BackgroundSpec spec, string? ffmpegPath = null, Action<string>? log = null,
+        int width = ThemeRenderer.ScreenSize, int height = ThemeRenderer.ScreenSize)
+    {
+        try
+        {
+            return spec.Kind switch
+            {
+                BackgroundKind.Gif => new ImageBackground(RequirePath(spec), width, height),
+                BackgroundKind.Video => new ImageBackground(VideoStill.Read(RequirePath(spec), ffmpegPath ?? throw new FileNotFoundException("ffmpeg was not found."), width, height)),
+                _ => Create(spec, ffmpegPath, log, width, height),
+            };
+        }
+        catch (Exception e) when (e is IOException or ArgumentException or OutOfMemoryException or UnauthorizedAccessException
+            or InvalidOperationException or TimeoutException or System.ComponentModel.Win32Exception)
+        {
+            log?.Invoke($"Background still failed, using plain color: {e.Message}");
+            return new ColorBackground(spec.Color);
+        }
+    }
+
     static string RequirePath(BackgroundSpec spec) =>
         File.Exists(spec.Path) ? spec.Path! : throw new FileNotFoundException($"Missing file: {spec.Path}");
 
@@ -58,6 +83,69 @@ public static class Backgrounds
 
     /// <summary>Copies a file into memory so the original can be moved or edited while it plays.</summary>
     internal static Image LoadImage(string path) => Image.FromStream(new MemoryStream(File.ReadAllBytes(path)));
+
+    /// <summary>Copies tightly packed BGR rows, as ffmpeg writes them, into a 24-bit bitmap of the same size.</summary>
+    internal static void CopyPixels(Bitmap target, byte[] pixels)
+    {
+        var (width, height) = (target.Width, target.Height);
+        var data = target.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
+        try
+        {
+            for (var row = 0; row < height; row++)
+                Marshal.Copy(pixels, row * width * 3, data.Scan0 + row * data.Stride, width * 3);
+        }
+        finally { target.UnlockBits(data); }
+    }
+}
+
+/// <summary>One frame of a video for theme cards. Frames are kept per file, so ffmpeg runs once until the file changes.</summary>
+public static class VideoStill
+{
+    static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
+    static readonly ConcurrentDictionary<(string Path, DateTime Written, int Width, int Height), byte[]> Frames = new();
+
+    /// <summary>ffmpeg's thumbnail filter picks a typical frame from the start, which skips black or faded openings.</summary>
+    public static IReadOnlyList<string> Arguments(string path, int width, int height) =>
+    [
+        "-nostdin", "-loglevel", "error", "-i", path, "-an", "-sn",
+        "-vf", $"thumbnail,scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height}",
+        "-frames:v", "1", "-pix_fmt", "bgr24", "-f", "rawvideo", "pipe:1",
+    ];
+
+    internal static Bitmap Read(string path, string ffmpeg, int width, int height)
+    {
+        var key = (path, File.GetLastWriteTimeUtc(path), width, height);
+        if (!Frames.TryGetValue(key, out var pixels))
+        {
+            pixels = Decode(path, ffmpeg, width, height);
+            Frames[key] = pixels;
+        }
+        var frame = new Bitmap(width, height, PixelFormat.Format24bppRgb);
+        Backgrounds.CopyPixels(frame, pixels);
+        return frame;
+    }
+
+    static byte[] Decode(string path, string ffmpeg, int width, int height)
+    {
+        if (!File.Exists(ffmpeg)) throw new FileNotFoundException("ffmpeg was not found.");
+        var start = new ProcessStartInfo(ffmpeg) { RedirectStandardOutput = true, UseShellExecute = false, CreateNoWindow = true };
+        foreach (var argument in Arguments(path, width, height)) start.ArgumentList.Add(argument);
+        using var process = Process.Start(start) ?? throw new InvalidOperationException("ffmpeg did not start.");
+        try
+        {
+            var pixels = new byte[width * height * 3];
+            var read = Task.Run(() => process.StandardOutput.BaseStream.ReadExactly(pixels));
+            if (Task.WhenAny(read, Task.Delay(Timeout)).GetAwaiter().GetResult() != read)
+                throw new TimeoutException("ffmpeg took too long to read a frame.");
+            read.GetAwaiter().GetResult();
+            return pixels;
+        }
+        finally
+        {
+            try { if (!process.HasExited) process.Kill(); }
+            catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception) { }
+        }
+    }
 }
 
 sealed class ColorBackground(string color) : IBackground
@@ -72,6 +160,9 @@ sealed class ColorBackground(string color) : IBackground
 sealed class ImageBackground : IBackground
 {
     readonly Bitmap _image;
+
+    /// <summary>Takes ownership of an already sized frame.</summary>
+    public ImageBackground(Bitmap image) => _image = image;
 
     public ImageBackground(string path, int width, int height)
     {
@@ -240,16 +331,7 @@ sealed class VideoBackground : IBackground
 
     void Copy(byte[] pixels)
     {
-        lock (_gate)
-        {
-            var data = _frame.LockBits(new Rectangle(0, 0, _width, _height), ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
-            try
-            {
-                for (var row = 0; row < _height; row++)
-                    Marshal.Copy(pixels, row * _width * 3, data.Scan0 + row * data.Stride, _width * 3);
-            }
-            finally { _frame.UnlockBits(data); }
-        }
+        lock (_gate) Backgrounds.CopyPixels(_frame, pixels);
     }
 
     public void Dispose()

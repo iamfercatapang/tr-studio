@@ -1,5 +1,5 @@
 # Publishes the app with its own .NET runtime, then builds the installer into artifacts\.
-# Needs Inno Setup 6, and ffmpeg.exe in third-party\ffmpeg\ so video backgrounds work without TRCC.
+# Needs Inno Setup 6 and ffmpeg.exe in third-party\ffmpeg\ so video backgrounds work without TRCC.
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 $publish = Join-Path $root 'artifacts\publish'

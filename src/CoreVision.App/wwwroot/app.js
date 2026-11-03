@@ -23,12 +23,15 @@ const METRICS = {
   MemoryUsed: { label: 'Memory In Use', short: 'In Use', unit: ' GB', min: 0, max: 64, digits: 1 },
   MemoryAvailable: { label: 'Memory Available', short: 'Available', unit: ' GB', min: 0, max: 64, digits: 1 },
   MemorySpeed: { label: 'Memory Speed', short: 'Speed', unit: ' MT/s', min: 0, max: 6000 },
+  MusicProgress: { label: 'Song Progress', short: 'Progress', unit: '%', min: 0, max: 100 },
+  OutdoorTemp: { label: 'Outdoor Temperature', short: 'Outdoor', unit: '°', min: -10, max: 40, bar: 'heat' },
+  GpuMemoryUsed: { label: 'GPU Memory In Use', short: 'VRAM', unit: ' GB', min: 0, max: 16, digits: 1 },
 };
 /* Listed in the default order. */
 const METRIC_PANELS = [
   { id: 'pc', title: 'This PC', iconName: 'Monitor' },
   { id: 'cpu', title: 'CPU', iconName: 'Chip', rings: ['CpuTemp', 'CpuLoad'], readouts: ['CpuPower', 'CpuClock'] },
-  { id: 'gpu', title: 'GPU', iconName: 'GraphicsCard', rings: ['GpuTemp', 'GpuLoad'], readouts: ['GpuHotSpot', 'GpuMemoryTemp', 'GpuPower', 'GpuClock'] },
+  { id: 'gpu', title: 'GPU', iconName: 'GraphicsCard', rings: ['GpuTemp', 'GpuLoad'], readouts: ['GpuHotSpot', 'GpuMemoryTemp', 'GpuPower', 'GpuClock', 'GpuMemoryUsed'] },
   { id: 'cooling', title: 'Cooling', iconName: 'Fan', rings: ['PumpRpm', 'CpuFanRpm', 'CaseFanRpm', 'GpuFan'], compact: true },
   { id: 'system', title: 'System', iconName: 'MemoryStick', rings: ['MemoryLoad'], readouts: ['MemoryUsed', 'MemoryAvailable', 'MemorySpeed', 'MotherboardTemp'] },
 ];
@@ -63,6 +66,15 @@ const NEW_SHAPE = {
   startAngle: 135, sweep: 270, filled: true, gradient: false, color: '#0A84FF', endColor: '#BF5AF2', opacity: 1,
 };
 const NEW_CAPTURE = { size: 240, cornerRadius: 16 };
+const NEW_WEATHER = {
+  kind: 'Weather', x: 240, y: 240, size: 300, bold: true, color: '#FFFFFF', secondaryColor: '#98989D',
+  showCondition: true, showDetails: true, showForecast: true,
+};
+const NEW_MUSIC = {
+  kind: 'Music', x: 240, y: 240, size: 300, bold: true, cornerRadius: 16,
+  color: '#FFFFFF', secondaryColor: '#98989D', endColor: '#00E5FF', trackColor: '#2A2A2E',
+  showArt: true, showTitle: true, showArtist: true, showProgress: true,
+};
 const NEW_TEXT_SIZE = 40;
 const MIN_HANDLE = 16;
 /* Line drawings on a 16 unit grid. Shapes and layer kinds go by their own names. */
@@ -70,6 +82,7 @@ const ICONS = {
   Metrics: '<path d="M1.5 8.5h3l2-5 3 9 2-4h3"/>',
   Themes: '<rect x="2" y="2" width="5" height="5" rx="1.25"/><rect x="9" y="2" width="5" height="5" rx="1.25"/><rect x="2" y="9" width="5" height="5" rx="1.25"/><rect x="9" y="9" width="5" height="5" rx="1.25"/>',
   Editor: '<path d="M2 4.5h6.5M12.5 4.5H14M2 11.5h1.5M7.5 11.5H14"/><circle cx="10.5" cy="4.5" r="2"/><circle cx="5.5" cy="11.5" r="2"/>',
+  Settings: '<circle cx="8" cy="8" r="2.25"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/>',
   Metric: '<path d="M2.5 13.5v-4M8 13.5v-11M13.5 13.5v-7"/>',
   Text: '<path d="M3 4.5v-2h10v2M8 2.5v11M6 13.5h4"/>',
   Clock: '<circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/>',
@@ -78,6 +91,12 @@ const ICONS = {
   Bar: '<rect x="1.5" y="5" width="13" height="6" rx="3"/><path d="M5 5v6M8.5 5v6"/>',
   Shape: '<circle cx="6" cy="6" r="4.5"/><path d="M7.5 7.5h7v7h-7z"/>',
   Capture: '<rect x="1.5" y="3" width="13" height="10" rx="2"/><rect x="8" y="8" width="4.5" height="3" rx="0.75"/>',
+  Music: '<path d="M6 12.5V3.5l7.5-1.5v9"/><circle cx="4.25" cy="12.5" r="1.75"/><circle cx="11.75" cy="11" r="1.75"/>',
+  Weather: '<circle cx="5.5" cy="5.5" r="2.25"/><path d="M5.5 1v1M1 5.5h1M2.3 2.3l.7.7M8.7 2.3l-.7.7"/><path d="M5.5 14h6.25a2.75 2.75 0 1 0-.6-5.43A3.75 3.75 0 0 0 4 9.5 2.25 2.25 0 0 0 5.5 14z"/>',
+  Play: '<path d="M5 3l8 5-8 5z"/>',
+  Pause: '<path d="M5.5 3.5v9M10.5 3.5v9"/>',
+  Previous: '<path d="M4 3.5v9M12.5 3.5L6 8l6.5 4.5z"/>',
+  Next: '<path d="M12 3.5v9M3.5 3.5L10 8l-6.5 4.5z"/>',
   Line: '<path d="M2.5 13.5l11-11"/>',
   Arc: '<path d="M3.5 12.5a6.4 6.4 0 1 1 9 0"/>',
   Rectangle: '<rect x="2" y="3.5" width="12" height="9" rx="1.5"/>',
@@ -119,6 +138,7 @@ const app = {
   screen: { width: SCREEN, height: SCREEN, round: true, model: '' },
   undo: [], redo: [], page: 'metrics',
   playlist: { enabled: false, paths: [], seconds: 30 },
+  weather: { place: null, units: 'Metric', report: null, error: null },
   alertSettings: Object.fromEntries(ALERT_RULES.flatMap((rule) => [[rule.on, true], [rule.limit, rule.fallback]])),
   alerts: [],
 };
@@ -472,6 +492,90 @@ function glideGauge(row, percent) {
   });
 }
 
+/* The Weather panel on the Themes page. */
+function chooseWeatherPlace(place) {
+  app.weatherSearching = null;
+  $('weatherResults').replaceChildren();
+  $('weatherQuery').value = '';
+  app.weather = { ...app.weather, place: place.label, report: null, error: null };
+  send({ type: 'weatherPlace', place, units: app.weather.units });
+  renderWeatherPanel();
+}
+
+function minutesAgo(iso) {
+  const minutes = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60000));
+  return minutes < 1 ? 'just now' : minutes === 1 ? '1 minute ago' : `${minutes} minutes ago`;
+}
+
+function renderWeatherPanel() {
+  if (!$('weatherNow')) return;
+  const { place, report, error, units } = app.weather;
+  const lines = [element('strong', { textContent: place ?? 'No city chosen' })];
+  if (!place) lines.push(element('span', { textContent: 'Search for your city below. Weather widgets show dashes until you choose one.' }));
+  else if (report && !report.stale) {
+    lines.push(element('span', { className: 'reading', textContent: `${report.temperature}° ${report.description}, H ${report.high}° L ${report.low}°` }),
+      element('span', { textContent: `Updated ${minutesAgo(report.fetched)}` }));
+  } else if (error) lines.push(element('span', { className: 'problem', textContent: `Couldn’t update the weather. TR Studio will try again in a few minutes.` }));
+  else lines.push(element('span', { textContent: 'Getting the forecast…' }));
+  $('weatherNow').replaceChildren(...lines);
+
+  const options = { Metric: '°C and km/h', Imperial: '°F and mph' };
+  const buttons = Object.entries(options).map(([value, label]) => {
+    const button = element('button', {
+      type: 'button', textContent: label,
+      onclick: () => {
+        if (app.weather.units === value) return;
+        app.weather = { ...app.weather, units: value, report: null };
+        send({ type: 'weatherUnits', units: value });
+        renderWeatherPanel();
+      },
+    });
+    button.setAttribute('aria-pressed', String(value === (units ?? 'Metric')));
+    return button;
+  });
+  $('weatherUnits').replaceChildren(element('span', { textContent: 'Units' }), element('div', { className: 'segmented' }, ...buttons));
+}
+
+/* The sidebar player. The app reports only changes, so the position is worked out here between reports. */
+function songPosition(song) {
+  if (song.position == null || !song.duration) return null;
+  const moved = song.playing ? (performance.now() - song.receivedAt) / 1000 : 0;
+  return Math.min(song.duration, song.position + moved);
+}
+
+const songClock = (seconds) => {
+  const whole = Math.floor(seconds);
+  const pad = (value) => String(value).padStart(2, '0');
+  return whole >= 3600 ? `${Math.floor(whole / 3600)}:${pad(Math.floor(whole / 60) % 60)}:${pad(whole % 60)}` : `${Math.floor(whole / 60)}:${pad(whole % 60)}`;
+};
+
+function renderNowPlaying() {
+  const song = app.nowPlaying;
+  $('nowPlaying').hidden = !song;
+  if (!song) return;
+  $('npArt').hidden = !song.art;
+  if (song.art) $('npArt').src = song.art;
+  $('npTitle').textContent = song.title;
+  $('npTitle').title = song.title;
+  $('npArtist').textContent = song.artist;
+  const play = $('npPlay');
+  play.replaceChildren(icon(song.playing ? 'Pause' : 'Play'));
+  play.setAttribute('aria-label', song.playing ? 'Pause' : 'Play');
+  play.disabled = !song.canPlayPause;
+  $('npPrevious').disabled = !song.canPrevious;
+  $('npNext').disabled = !song.canNext;
+  renderSongProgress();
+}
+
+function renderSongProgress() {
+  const song = app.nowPlaying;
+  const position = song ? songPosition(song) : null;
+  $('npProgress').hidden = position == null;
+  if (position == null) return;
+  $('npBar').style.transform = `scaleX(${position / song.duration})`;
+  $('npTime').textContent = `${songClock(position)} / ${songClock(song.duration)}`;
+}
+
 /* Updated in place, so a number changes without rebuilding its gauge. */
 function renderStats() {
   statRows.forEach((row, key) => {
@@ -665,12 +769,15 @@ function plainToggle(label, value, apply) {
   return element('label', { className: 'switch' }, element('span', { textContent: label }), input);
 }
 
+function renderStartupOptions() {
+  $('startupOptions').replaceChildren(plainToggle('Run at Windows Startup', app.startup, (enabled) => {
+    app.startup = enabled;
+    send({ type: 'startup', enabled });
+  }));
+}
+
 function renderScreenOptions() {
   $('screenOptions').replaceChildren(
-    plainToggle('Run at Windows Startup', app.startup, (enabled) => {
-      app.startup = enabled;
-      send({ type: 'startup', enabled });
-    }),
     plainToggle('Round Screen', isRound(), (round) => {
       try { localStorage.setItem('roundScreen', String(round)); } catch { /* the shape falls back to detection */ }
       applyScreenShape();
@@ -873,7 +980,35 @@ function textOf(item) {
 }
 
 /* Everything but text is placed by its center. Text goes by its edge. */
-const isCentered = (item) => ['Gauge', 'Capture', 'Bar', 'Shape'].includes(item.kind);
+const isCentered = (item) => ['Gauge', 'Capture', 'Bar', 'Shape', 'Music', 'Weather'].includes(item.kind);
+
+/* Mirrors ThemeRenderer.LayoutWeather. */
+function weatherLayout(item) {
+  const width = Math.max(item.size, 160);
+  let y = width * 0.26;
+  if (item.showCondition !== false) y += width * 0.03 + width * 0.062 * 1.3;
+  if (item.showDetails !== false) y += width * 0.02 + width * 0.052 * 1.3 * 2;
+  if (item.showForecast !== false) y += width * 0.05 + width * 0.05 * 1.3 * 2 + width * 0.12 + width * 0.01;
+  return { left: item.x - width / 2, top: item.y - y / 2, width, height: y };
+}
+
+/* Mirrors ThemeRenderer.LayoutMusic, so the handle matches what the engine draws. */
+function musicLayout(item) {
+  const width = Math.max(item.size, 120);
+  let y = 0;
+  const art = item.showArt !== false ? width * 0.5 : 0;
+  y += art;
+  const anyText = item.showTitle !== false || item.showArtist !== false || item.showProgress !== false;
+  if (art > 0 && anyText) y += width * 0.05;
+  if (item.showTitle !== false) y += width * 0.075 * 1.3;
+  if (item.showArtist !== false) y += width * 0.058 * 1.3;
+  if (item.showProgress !== false) {
+    if (y > 0) y += width * 0.03;
+    y += Math.max(width * 0.018, 3) + width * 0.025 + width * 0.045 * 1.3;
+  }
+  const height = Math.max(y, 1);
+  return { left: item.x - width / 2, top: item.y - height / 2, width, height };
+}
 
 /* The upright box that fits around a turned one. */
 function turnedBox(item, width, height) {
@@ -892,6 +1027,8 @@ function boundsOf(item) {
     return { left: item.x - item.size / 2, top: item.y - height / 2, width: item.size, height };
   }
   if (item.kind === 'Bar') return turnedBox(item, item.size, item.thickness);
+  if (item.kind === 'Music') return musicLayout(item);
+  if (item.kind === 'Weather') return weatherLayout(item);
   if (item.kind === 'Shape') {
     const heights = { Line: item.thickness, Arc: item.size };
     return turnedBox(item, item.size, heights[item.shape] ?? item.height);
@@ -1522,6 +1659,8 @@ function layerName(item) {
   if (item.kind === 'Metric') return METRICS[item.metric]?.label ?? 'Stat';
   if (item.kind === 'Gauge') return `${METRICS[item.metric]?.label ?? 'Stat'} Gauge`;
   if (item.kind === 'Capture') return 'Picture-in-Picture';
+  if (item.kind === 'Music') return 'Music';
+  if (item.kind === 'Weather') return 'Weather';
   if (item.kind === 'Bar') return `${METRICS[item.metric]?.label ?? 'Stat'} Bar`;
   if (item.kind === 'Shape') return item.shape;
   return item.kind;
@@ -1687,9 +1826,10 @@ function renderInspector() {
   const panel = $('inspector');
   if (!app.draft) { panel.replaceChildren(); return; }
   const item = app.draft.elements[app.selected];
-  const forItem = { Gauge: gaugeControls, Bar: barControls, Shape: shapeControls, Capture: captureControls }[item?.kind] ?? elementControls;
+  const forItem = { Gauge: gaugeControls, Bar: barControls, Shape: shapeControls, Capture: captureControls, Music: musicControls, Weather: weatherControls }[item?.kind] ?? elementControls;
   const controls = item ? forItem(item) : backgroundControls();
   panel.replaceChildren(...controls);
+  renderWeatherPanel();
 }
 
 /* Exact X and Y for when dragging isn't precise enough. */
@@ -1863,6 +2003,83 @@ function captureControls(item) {
   return controls;
 }
 
+function weatherSearchForm() {
+  const input = element('input', { type: 'search', id: 'weatherQuery', placeholder: 'Search for a city', maxLength: 80, autocomplete: 'off' });
+  input.setAttribute('aria-label', 'City');
+  const form = element('form', { className: 'weather-search' }, input, element('button', { type: 'submit', textContent: 'Search' }));
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const query = input.value.trim();
+    if (!query) return;
+    app.weatherSearching = query;
+    $('weatherResults').replaceChildren(element('p', { textContent: 'Searching…' }));
+    send({ type: 'weatherSearch', query });
+  });
+  return form;
+}
+
+/* The city and units are shared, so every Weather widget agrees. */
+function weatherControls(item) {
+  const controls = [
+    element('h3', { textContent: 'Weather' }),
+    element('p', { className: 'hint', textContent: 'The forecast comes from Open-Meteo for the city you choose. Only that city’s location is sent, every 15 minutes. Every Weather widget uses the same city.' }),
+    element('div', { className: 'widget-settings' },
+      element('div', { className: 'weather-now', id: 'weatherNow' }),
+      weatherSearchForm(),
+      element('div', { className: 'weather-results', id: 'weatherResults', role: 'list' }),
+      element('div', { className: 'field weather-units', id: 'weatherUnits' })),
+  ];
+  if (isOutsideCircle(item)) {
+    controls.push(element('p', { className: 'hint warning', textContent: 'Part of this is outside the screen.' }));
+  }
+  controls.push(
+    positionFields(item),
+    centerButton(item),
+    slider('Width', item.size, { min: 160, max: SCREEN, step: 2, unit: ' px', reset: NEW_WEATHER.size }, (v) => { item.size = v; }),
+    toggle('Condition and City', item.showCondition !== false, (v) => { item.showCondition = v; }),
+    toggle('High, Low, Humidity, Wind', item.showDetails !== false, (v) => { item.showDetails = v; }),
+    toggle('3-Day Forecast', item.showForecast !== false, (v) => { item.showForecast = v; }),
+    ...fontControls(item),
+    colorField('Temperature Color', item.color, (v) => { item.color = v; }),
+    colorField('Detail Color', item.secondaryColor ?? NEW_WEATHER.secondaryColor, (v) => { item.secondaryColor = v; }),
+    element('button', { textContent: 'Delete', className: 'danger wide', onclick: removeSelected }));
+  return controls;
+}
+
+/* The widget follows whatever Windows reports as playing, so there's nothing to pick here. */
+function musicControls(item) {
+  const controls = [
+    element('h3', { textContent: 'Music' }),
+    element('p', { className: 'hint', textContent: 'Shows what Spotify or a browser tab is playing. It hides itself when nothing plays.' }),
+  ];
+  if (isOutsideCircle(item)) {
+    controls.push(element('p', { className: 'hint warning', textContent: 'Part of this is outside the screen.' }));
+  }
+  controls.push(
+    positionFields(item),
+    centerButton(item),
+    slider('Width', item.size, { min: 120, max: SCREEN, step: 2, unit: ' px', reset: NEW_MUSIC.size }, (v) => { item.size = v; }),
+    toggle('Album Art', item.showArt !== false, (v) => { item.showArt = v; }),
+    toggle('Song Title', item.showTitle !== false, (v) => { item.showTitle = v; }),
+    toggle('Artist', item.showArtist !== false, (v) => { item.showArtist = v; }),
+    toggle('Progress Bar', item.showProgress !== false, (v) => { item.showProgress = v; }));
+  if (item.showArt !== false) {
+    const round = Math.round(item.size / 4);
+    controls.push(slider('Art Corners', Math.min(item.cornerRadius ?? 0, round), { min: 0, max: round, step: 1, unit: ' px', reset: NEW_MUSIC.cornerRadius }, (v) => { item.cornerRadius = v; }));
+  }
+  controls.push(
+    ...fontControls(item),
+    colorField('Title Color', item.color, (v) => { item.color = v; }),
+    colorField('Artist and Time Color', item.secondaryColor ?? NEW_MUSIC.secondaryColor, (v) => { item.secondaryColor = v; }));
+  if (item.showProgress !== false) {
+    controls.push(
+      colorField('Progress Color', item.endColor ?? NEW_MUSIC.endColor, (v) => { item.endColor = v; }),
+      colorField('Track Color', item.trackColor ?? NEW_MUSIC.trackColor, (v) => { item.trackColor = v; }));
+  }
+  controls.push(element('button', { textContent: 'Delete', className: 'danger wide', onclick: removeSelected }));
+  return controls;
+}
+
 const isTemperature = (metric) => METRICS[metric]?.unit === DEGREE;
 
 function elementControls(item) {
@@ -1986,6 +2203,7 @@ const handlers = {
     $('modelName').textContent = app.screen.model;
     applyScreenShape();
     renderScreenOptions();
+    renderStartupOptions();
     renderRotation();
     app.playlist = message.playlist ?? app.playlist;
     renderPlaylist();
@@ -2017,6 +2235,32 @@ const handlers = {
     renderStats();
     renderAlertReadings();
     trackLoading();
+  },
+  windowState(message) {
+    const button = $('windowMaximize');
+    const label = message.maximized ? 'Restore' : 'Maximize';
+    button.setAttribute('aria-label', label);
+    button.title = label;
+    button.querySelector('path').setAttribute('d', message.maximized ? 'M2.5.5h7v7M.5 2.5h7v7h-7z' : 'M.5.5h9v9h-9z');
+  },
+  weather(message) {
+    app.weather = message;
+    renderWeatherPanel();
+  },
+  weatherResults(message) {
+    if (message.query !== app.weatherSearching) return; // an older search answered late
+    const results = $('weatherResults');
+    if (message.error) { results.replaceChildren(element('p', { textContent: message.error })); return; }
+    if (!message.places?.length) { results.replaceChildren(element('p', { textContent: `No city called “${message.query}” was found.` })); return; }
+    results.replaceChildren(...message.places.map((place) => {
+      const button = element('button', { textContent: place.label, onclick: () => chooseWeatherPlace(place) });
+      button.setAttribute('role', 'listitem');
+      return button;
+    }));
+  },
+  nowPlaying(message) {
+    app.nowPlaying = message.media ? { ...message.media, receivedAt: performance.now() } : null;
+    renderNowPlaying();
   },
   alerts(message) {
     app.alerts = message.active;
@@ -2085,6 +2329,21 @@ $('addGauge').onclick = () => addElement(NEW_GAUGE);
 $('addBar').onclick = () => addElement(NEW_BAR);
 $('addShape').onclick = () => addElement(NEW_SHAPE);
 $('addCapture').onclick = () => pickRegion('new');
+$('addMusic').onclick = () => addElement(NEW_MUSIC);
+$('addWeather').onclick = () => addElement(NEW_WEATHER);
+$('windowMinimize').onclick = () => send({ type: 'window', action: 'minimize' });
+$('windowMaximize').onclick = () => send({ type: 'window', action: 'maximize' });
+$('windowClose').onclick = () => send({ type: 'window', action: 'close' });
+$('npPrevious').onclick = () => send({ type: 'mediaControl', action: 'previous' });
+$('npNext').onclick = () => send({ type: 'mediaControl', action: 'next' });
+$('npPlay').onclick = () => {
+  if (!app.nowPlaying) return;
+  send({ type: 'mediaControl', action: 'playPause' });
+  // Flipped at once; the app's next report confirms it or puts it back.
+  app.nowPlaying = { ...app.nowPlaying, playing: !app.nowPlaying.playing, position: songPosition(app.nowPlaying), receivedAt: performance.now() };
+  renderNowPlaying();
+};
+setInterval(renderSongProgress, 1000);
 $('undo').onclick = () => restore(app.undo, app.redo);
 $('redo').onclick = () => restore(app.redo, app.undo);
 $('save').onclick = saveDraft;

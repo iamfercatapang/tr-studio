@@ -13,7 +13,13 @@ sealed class MainWindow : Form
 {
     const string Host = "app.corevision";
     const int DwmUseImmersiveDarkMode = 20;
+    const int DwmBorderColor = 34, DwmCaptionColor = 35, DwmTextColor = 36;
     const int WindowHideMs = 250;
+
+    // The title bar takes the app's own colors from app.css: --sidebar-solid, --text and a solid --hairline-strong.
+    static readonly Color TitleBar = Color.FromArgb(0x0A, 0x08, 0x12);
+    static readonly Color TitleText = Color.FromArgb(0xF3, 0xF0, 0xFF);
+    static readonly Color WindowBorder = Color.FromArgb(0x3A, 0x2F, 0x63);
 
     readonly TrayContext _app;
     readonly WebView2 _web = new() { Dock = DockStyle.Fill, DefaultBackgroundColor = Color.Black };
@@ -30,8 +36,13 @@ sealed class MainWindow : Form
         BackColor = Color.Black;
         Icon = AppIcon.Load(SystemInformation.IconSize);
         Controls.Add(_web);
-        var dark = 1;
-        HandleCreated += (_, _) => DwmSetWindowAttribute(Handle, DwmUseImmersiveDarkMode, ref dark, sizeof(int));
+        HandleCreated += (_, _) =>
+        {
+            StyleTitleBar();
+            // Recalculates the frame now, so the page fills the old title bar from the first paint.
+            SetWindowPos(Handle, IntPtr.Zero, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoZOrder | SwpFrameChanged);
+        };
+        SizeChanged += (_, _) => PostWindowState();
         Load += async (_, _) => await StartWebAsync();
     }
 
@@ -78,6 +89,7 @@ sealed class MainWindow : Form
         web.Settings.AreDefaultContextMenusEnabled = false;
         web.Settings.IsStatusBarEnabled = false;
         web.Settings.IsZoomControlEnabled = false;
+        web.Settings.IsNonClientRegionSupportEnabled = true; // the page's title bar drags the window with CSS app-region
         web.SetVirtualHostNameToFolderMapping(Host, Path.Combine(AppContext.BaseDirectory, "wwwroot"), CoreWebView2HostResourceAccessKind.Deny);
         web.NavigationStarting += (_, e) =>
         {
@@ -96,12 +108,18 @@ sealed class MainWindow : Form
             var message = JsonNode.Parse(json)!.AsObject();
             switch ((string?)message["type"])
             {
+                case "window":
+                    MoveWindow((string?)message["action"]);
+                    break;
                 case "ready":
                     _ready = true;
                     _app.Log("Interface ready");
+                    PostWindowState();
                     _app.SendState();
                     _app.SendSystemSpecs();
                     _app.SendPalettes();
+                    _app.SendNowPlaying();
+                    _app.SendWeather();
                     break;
                 case "refresh":
                     _app.SendState();
@@ -160,6 +178,21 @@ sealed class MainWindow : Form
                     break;
                 case "pickMedia":
                     PickMedia();
+                    break;
+                case "weatherSearch":
+                    _ = _app.SearchWeatherAsync((string?)message["query"] ?? "");
+                    break;
+                case "weatherUnits":
+                    _app.SetWeather(_app.WeatherPlace, (string?)message["units"] == "Imperial" ? WeatherUnits.Imperial : WeatherUnits.Metric);
+                    break;
+                case "weatherPlace":
+                    _app.SetWeather(message["place"] is JsonObject place
+                        ? new WeatherPlace((string?)place["name"] ?? "", (string?)place["region"] ?? "", (string?)place["country"] ?? "",
+                            (double?)place["latitude"] ?? 0, (double?)place["longitude"] ?? 0)
+                        : null, (string?)message["units"] == "Imperial" ? WeatherUnits.Imperial : WeatherUnits.Metric);
+                    break;
+                case "mediaControl":
+                    _app.ControlMedia((string?)message["action"]);
                     break;
                 case "pickRegion":
                     _ = PickRegionAsync();
@@ -253,4 +286,62 @@ sealed class MainWindow : Form
 
     [DllImport("dwmapi")]
     static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
+
+    const int WmNcCalcSize = 0x0083;
+    const int SmCySizeFrame = 33, SmCxPaddedBorder = 92;
+    const uint SwpNoSize = 0x1, SwpNoMove = 0x2, SwpNoZOrder = 0x4, SwpFrameChanged = 0x20;
+
+    /// <summary>
+    /// The page draws its own title bar, like Discord's. The window keeps its sizing frame, shadow and edge
+    /// snapping, and only the space Windows would give its title bar goes to the page instead.
+    /// </summary>
+    protected override void WndProc(ref Message m)
+    {
+        if (m.Msg == WmNcCalcSize && m.WParam != IntPtr.Zero)
+        {
+            var top = Marshal.ReadInt32(m.LParam, 4); // the window's top edge, before Windows adds its title bar
+            base.WndProc(ref m);
+            // Maximized, the frame hangs past the screen edge, so the page starts that far down to stay on screen.
+            var inset = WindowState == FormWindowState.Maximized
+                ? GetSystemMetricsForDpi(SmCySizeFrame, GetDpiForWindow(Handle)) + GetSystemMetricsForDpi(SmCxPaddedBorder, GetDpiForWindow(Handle))
+                : 0;
+            Marshal.WriteInt32(m.LParam, 4, top + inset);
+            return;
+        }
+        base.WndProc(ref m);
+    }
+
+    void MoveWindow(string? action)
+    {
+        switch (action)
+        {
+            case "minimize": WindowState = FormWindowState.Minimized; break;
+            case "maximize": WindowState = WindowState == FormWindowState.Maximized ? FormWindowState.Normal : FormWindowState.Maximized; break;
+            case "close": Close(); break; // hides to the tray, like the old close button
+        }
+    }
+
+    void PostWindowState()
+    {
+        if (WindowState != FormWindowState.Minimized) Post(new JsonObject { ["type"] = "windowState", ["maximized"] = WindowState == FormWindowState.Maximized });
+    }
+
+    [DllImport("user32")]
+    static extern bool SetWindowPos(IntPtr window, IntPtr after, int x, int y, int width, int height, uint flags);
+    [DllImport("user32")]
+    static extern int GetSystemMetricsForDpi(int index, uint dpi);
+    [DllImport("user32")]
+    static extern uint GetDpiForWindow(IntPtr window);
+
+    /// <summary>Dark frame colors for the border Windows still draws around the window.</summary>
+    void StyleTitleBar()
+    {
+        var dark = 1;
+        DwmSetWindowAttribute(Handle, DwmUseImmersiveDarkMode, ref dark, sizeof(int));
+        foreach (var (attribute, color) in new[] { (DwmCaptionColor, TitleBar), (DwmTextColor, TitleText), (DwmBorderColor, WindowBorder) })
+        {
+            var colorRef = color.R | color.G << 8 | color.B << 16; // COLORREF is 0x00BBGGRR
+            DwmSetWindowAttribute(Handle, attribute, ref colorRef, sizeof(int));
+        }
+    }
 }

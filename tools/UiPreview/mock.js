@@ -27,8 +27,31 @@ let theme = defaultTheme;
 const saved = new Map();
 const removed = new Set();
 
+const song = { title: 'Uncle Dags - Viva La Raza (feat. THUGSTA) [Official Music Video]', artist: 'Uncle Dags', playing: true, position: 83, duration: 272, art: null, canPlayPause: true, canNext: true, canPrevious: false };
+
 function draw(item) {
   if (item.hidden) return;
+  if (item.kind === 'Weather') {
+    ctx.fillStyle = '#FFD60A';
+    ctx.beginPath(); ctx.arc(item.x - 60, item.y - 50, 26, 0, 7); ctx.fill();
+    ctx.fillStyle = item.color ?? '#FFFFFF';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.font = `600 ${item.size * 0.2}px "Segoe UI"`;
+    ctx.fillText(window.mock.weather?.place ? '12°' : '–°', item.x - 20, item.y - 50);
+    return;
+  }
+  if (item.kind === 'Music') {
+    if (!window.mock.playing) return; // the widget hides when nothing plays
+    const width = Math.max(item.size, 120);
+    const art = item.showArt !== false ? width * 0.5 : 0;
+    ctx.fillStyle = '#7a3cff';
+    ctx.beginPath(); ctx.roundRect(item.x - art / 2, item.y - width * 0.42, art, art, item.cornerRadius ?? 16); ctx.fill();
+    ctx.fillStyle = item.color ?? '#FFFFFF';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.font = `600 ${width * 0.075}px "Segoe UI"`;
+    if (item.showTitle !== false) ctx.fillText('Uncle Dags - Viva La Raza (…', item.x, item.y - width * 0.42 + art + width * 0.05);
+    return;
+  }
   if (item.kind === 'Capture') {
     const height = item.size * item.captureHeight / item.captureWidth;
     ctx.fillStyle = '#2d6cdf';
@@ -137,6 +160,10 @@ window.chrome.webview = {
     if (message.type === 'importPalette') emit({ type: 'palette', palette: { name: 'Essentials', colors: ['#112233', '#445566'] } });
     if (message.type === 'ready') {
       emit({ type: 'palettes', palettes: [] });
+      window.mock.playing = true;
+      emit({ type: 'nowPlaying', media: song });
+      window.mock.weather = { place: null, units: 'Metric', error: null, report: null };
+      emit({ type: 'weather', ...window.mock.weather });
       setTimeout(() => emit({ type: 'system', rows: [
         { label: 'Processor', values: ['AMD Ryzen 7 5800X 8-Core Processor'] },
         { label: 'Graphics', values: ['NVIDIA GeForce RTX 3070'] },
@@ -171,6 +198,27 @@ window.chrome.webview = {
       state();
       emit({ type: 'notice', message: 'Theme imported' });
     }
+    if (message.type === 'mediaControl') {
+      if (message.action === 'playPause') song.playing = !song.playing;
+      if (message.action === 'next') { song.title = 'Next Song'; song.position = 0; }
+      setTimeout(() => emit({ type: 'nowPlaying', media: { ...song } }), 80);
+    }
+    if (message.type === 'weatherSearch') {
+      const places = message.query.toLowerCase() === 'nowhere' ? [] : [
+        { label: 'London, England, United Kingdom', name: 'London', region: 'England', country: 'United Kingdom', latitude: 51.5, longitude: -0.13 },
+        { label: 'London, Ontario, Canada', name: 'London', region: 'Ontario', country: 'Canada', latitude: 42.98, longitude: -81.23 },
+      ];
+      setTimeout(() => emit({ type: 'weatherResults', query: message.query, places }), 120);
+    }
+    if (message.type === 'weatherUnits') message = { type: 'weatherPlace', place: null, units: message.units };
+    if (message.type === 'weatherPlace') {
+      const place = message.place?.label ?? window.mock.weather.place;
+      window.mock.weather = { place, units: message.units, error: null, report: null };
+      emit({ type: 'weather', ...window.mock.weather });
+      const report = message.units === 'Imperial' ? { temperature: 54, high: 56, low: 45 } : { temperature: 12, high: 13, low: 7 };
+      setTimeout(() => { window.mock.weather.report = { ...report, description: 'Partly Cloudy', fetched: new Date().toISOString(), stale: false }; emit({ type: 'weather', ...window.mock.weather }); }, 300);
+    }
+    if (message.type === 'stopMusic') { window.mock.playing = false; emit({ type: 'nowPlaying', media: null }); }
     if (message.type === 'pickMedia') emit({ type: 'media', kind: 'Image', path: 'C:\\Pictures\\wallpaper.jpg' });
   },
 };

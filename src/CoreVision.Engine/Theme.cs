@@ -4,13 +4,15 @@ using System.Text.Json.Serialization;
 namespace CoreVision.Engine;
 
 public enum BackgroundKind { Color, Image, Gif, Video }
-public enum ElementKind { Metric, Text, Clock, Date, Gauge, Capture, Bar, Shape }
+public enum ElementKind { Metric, Text, Clock, Date, Gauge, Capture, Bar, Shape, Music, Weather }
 public enum Metric
 {
     CpuTemp, CpuLoad, CpuPower, GpuTemp, GpuLoad, GpuPower, MemoryLoad,
     CpuClock, GpuClock, GpuFan, GpuHotSpot, GpuMemoryTemp, MotherboardTemp,
     PumpRpm, CpuFanRpm, CaseFanRpm,
     MemoryUsed, MemoryAvailable, MemorySpeed,
+    MusicProgress, OutdoorTemp,
+    GpuMemoryUsed,
 }
 public enum TextAlign { Left, Center, Right }
 public enum ShapeKind { Line, Arc, Rectangle, Ellipse, Triangle, Diamond, Hexagon, Star }
@@ -71,6 +73,19 @@ public sealed record ElementSpec(ElementKind Kind, float X, float Y, float Size)
     public bool Filled { get; init; } = true;
     public bool Gradient { get; init; }
     public float Opacity { get; init; } = 1;
+
+    // Music: X and Y are the center and Size is the width. Color is the title, SecondaryColor the artist and
+    // times, EndColor the progress fill and TrackColor the empty bar. CornerRadius rounds the album art.
+    public bool ShowArt { get; init; } = true;
+    public bool ShowTitle { get; init; } = true;
+    public bool ShowArtist { get; init; } = true;
+    public bool ShowProgress { get; init; } = true;
+    public string SecondaryColor { get; init; } = "#98989D";
+
+    // Weather: X and Y are the center and Size is the width. Color is the temperature and forecast, SecondaryColor the rest.
+    public bool ShowCondition { get; init; } = true;
+    public bool ShowDetails { get; init; } = true;
+    public bool ShowForecast { get; init; } = true;
 }
 
 public sealed record Theme(string Name, BackgroundSpec Background, IReadOnlyList<ElementSpec> Elements)
@@ -245,6 +260,18 @@ public sealed record Theme(string Name, BackgroundSpec Background, IReadOnlyList
             Label(168, 316, 18, "In Use", color: Secondary),
             Value(312, 278, 30, Metric.MemoryAvailable, " GB"),
             Label(312, 316, 18, "Available", color: Secondary),
+        ]),
+        new("Now Playing", new BackgroundSpec(),
+        [
+            Ring(Metric.MusicProgress, 452, 0, 100, HaloCyan, HaloPurple, 14) with { StartAngle = 270, Sweep = 360, Dot = false },
+            new ElementSpec(ElementKind.Clock, 240, 70, 26) { Align = TextAlign.Center, Color = Secondary },
+            new ElementSpec(ElementKind.Music, 240, 252, 300) { Bold = true, ShowProgress = false, CornerRadius = 20 },
+        ]),
+        new("Weather", new BackgroundSpec(),
+        [
+            new ElementSpec(ElementKind.Clock, 240, 64, 40) { Align = TextAlign.Center, Bold = true },
+            new ElementSpec(ElementKind.Date, 240, 114, 20) { Align = TextAlign.Center, Format = "dddd, MMM d", Color = Secondary },
+            new ElementSpec(ElementKind.Weather, 240, 286, 300) { Bold = true },
         ]),
         new("Dual Bar", new BackgroundSpec(BackgroundKind.Color, "#0C1210"),
         [

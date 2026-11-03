@@ -181,7 +181,7 @@ public class GaugeTests
         Assert.Equal(ReadingState.Invalid, stats.Get(Metric.CpuClock).State); // a false 0 without admin rights
         Assert.Equal(ReadingState.Invalid, stats.Get(Metric.GpuHotSpot).State);
         Assert.Equal(ReadingState.Missing, stats.Get(Metric.GpuFan).State);
-        foreach (var metric in Enum.GetValues<Metric>())
+        foreach (var metric in Enum.GetValues<Metric>().Where(metric => metric is not (Metric.MusicProgress or Metric.OutdoorTemp))) // not from sensors
             Assert.Equal(ReadingState.Stale, stats.AsStale().Get(metric).State);
     }
 }

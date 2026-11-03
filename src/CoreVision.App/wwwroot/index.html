@@ -8,6 +8,13 @@
   <link rel="stylesheet" href="app.css">
 </head>
 <body>
+  <header class="titlebar">
+    <div class="window-controls">
+      <button class="window-button" id="windowMinimize" aria-label="Minimize" title="Minimize"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M0 5h10"/></svg></button>
+      <button class="window-button" id="windowMaximize" aria-label="Maximize" title="Maximize"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M.5.5h9v9h-9z"/></svg></button>
+      <button class="window-button close" id="windowClose" aria-label="Close" title="Close to the tray"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M0 0l10 10M10 0L0 10"/></svg></button>
+    </div>
+  </header>
   <aside class="sidebar">
     <div class="brand">
       <h1>TR Studio</h1>
@@ -18,7 +25,23 @@
       <button class="nav-item" data-page="metrics" data-icon="Metrics">Metrics</button>
       <button class="nav-item" data-page="themes" data-icon="Themes">Themes</button>
       <button class="nav-item" data-page="editor" data-icon="Editor">Editor</button>
+      <button class="nav-item" data-page="settings" data-icon="Settings">Settings</button>
     </nav>
+    <section class="now-playing" id="nowPlaying" aria-label="Now playing" hidden>
+      <div class="np-song">
+        <img class="np-art" id="npArt" alt="" hidden>
+        <div class="np-text"><strong id="npTitle"></strong><span id="npArtist"></span></div>
+      </div>
+      <div class="np-progress" id="npProgress" hidden>
+        <div class="np-track"><span class="np-bar" id="npBar"></span></div>
+        <span class="np-time" id="npTime"></span>
+      </div>
+      <div class="np-controls">
+        <button id="npPrevious" class="icon-only" aria-label="Previous" title="Previous" data-icon="Previous"></button>
+        <button id="npPlay" class="icon-only np-play" aria-label="Play" title="Play or pause" data-icon="Play"></button>
+        <button id="npNext" class="icon-only" aria-label="Next" title="Next" data-icon="Next"></button>
+      </div>
+    </section>
     <div class="alert-banner" id="alertBanner" role="alert" hidden></div>
     <div class="status" id="status" role="status">
       <span class="status-dot"></span><span id="statusText">Starting</span>
@@ -56,11 +79,6 @@
           </div>
         </div>
       </section>
-      <section class="alerts-panel" aria-labelledby="alertsTitle">
-        <div class="section-header"><h3 id="alertsTitle">Warnings</h3></div>
-        <p class="alerts-intro">When a reading stays past its limit for a few seconds, the cooler screen shows a warning over your theme and Windows shows a notification.</p>
-        <div class="alert-rules" id="alertRules"></div>
-      </section>
       <div class="section-header">
         <h3>Your Themes</h3>
         <div class="toolbar-group">
@@ -69,6 +87,20 @@
         </div>
       </div>
       <div class="theme-grid" id="themeGrid"></div>
+    </section>
+
+    <section class="page" id="page-settings" aria-labelledby="settingsTitle" hidden>
+      <header class="page-header"><h2 id="settingsTitle">Settings</h2></header>
+      <section class="alerts-panel" aria-labelledby="startupTitle">
+        <div class="section-header"><h3 id="startupTitle">Startup</h3></div>
+        <p class="alerts-intro">TR Studio starts in the tray when you sign in to Windows, so the cooler screen shows your theme without opening the app.</p>
+        <div class="settings-options" id="startupOptions"></div>
+      </section>
+      <section class="alerts-panel" aria-labelledby="alertsTitle">
+        <div class="section-header"><h3 id="alertsTitle">Warnings</h3></div>
+        <p class="alerts-intro">When a reading stays past its limit for a few seconds, the cooler screen shows a warning over your theme and Windows shows a notification.</p>
+        <div class="alert-rules" id="alertRules"></div>
+      </section>
     </section>
 
     <section class="page" id="page-editor" aria-labelledby="editorTitle" hidden>
@@ -93,6 +125,8 @@
             <button id="addGauge" data-icon="Gauge" aria-label="Add Gauge">Gauge</button>
             <button id="addBar" data-icon="Bar" aria-label="Add Bar">Bar</button>
             <button id="addShape" data-icon="Shape" aria-label="Add Shape">Shape</button>
+            <button id="addWeather" data-icon="Weather" aria-label="Add Weather" title="Show the forecast for your city">Weather</button>
+            <button id="addMusic" data-icon="Music" aria-label="Add Music" title="Show what Spotify or a browser is playing">Music</button>
             <button id="addCapture" data-icon="Capture" aria-label="Add Picture-in-Picture" title="Show a live area of your desktop on the cooler">PiP</button>
           </div>
           <h3>Layers</h3>

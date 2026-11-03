@@ -32,6 +32,12 @@ public sealed class ThemePlayer : IDisposable
         _thread = new Thread(Run) { IsBackground = true, Name = "ThemePlayer" };
     }
 
+    /// <summary>What is playing, read on every frame. Null hides Music widgets.</summary>
+    public Func<NowPlaying?> Media { get; init; } = () => null;
+
+    /// <summary>The latest forecast, read on every frame. Null shows dashes in Weather widgets.</summary>
+    public Func<WeatherReport?> Weather { get; init; } = () => null;
+
     public event Action<byte[]>? FrameRendered;
     public Theme Theme => _theme;
     public long FramesRendered => Interlocked.Read(ref _framesRendered);
@@ -59,6 +65,9 @@ public sealed class ThemePlayer : IDisposable
     }
 
     public void Start() => _thread.Start();
+
+    /// <summary>Draws a new frame now, for example when the song changes.</summary>
+    public void Invalidate() => _changed.Set();
 
     /// <summary>Only a changed background reopens media, so live edits never restart a video.</summary>
     public void Play(Theme theme)
@@ -110,7 +119,12 @@ public sealed class ThemePlayer : IDisposable
                 try
                 {
                     if (Interlocked.Exchange(ref _fadePending, 0) == 1) renderer.BeginFade();
-                    var frame = renderer.Render(background, theme.Elements, _stats(), DateTime.Now, theme.Dim, _alerts);
+                    var media = Media();
+                    var stats = _stats();
+                    var weather = Weather();
+                    if (media != null) stats = stats with { MusicProgress = media.ProgressAt(DateTime.UtcNow) };
+                    if (weather != null) stats = stats with { OutdoorTemp = weather.TemperatureAt(DateTime.UtcNow) };
+                    var frame = renderer.Render(background, theme.Elements, stats, DateTime.Now, theme.Dim, _alerts, media, weather);
                     var rotation = _rotation;
                     _submit(rotation == 0 ? frame : renderer.EncodeRotated(rotation));
                     FrameRendered?.Invoke(frame);

@@ -2,12 +2,12 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <ApplicationManifest Condition="'$(Configuration)' == 'Release'">app.manifest</ApplicationManifest>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>app.ico</ApplicationIcon>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <Product>TR Studio</Product>
   </PropertyGroup>
   <ItemGroup>
@@ -19,5 +19,9 @@
   <ItemGroup>
     <Content Include="wwwroot\**\*" CopyToOutputDirectory="PreserveNewest" />
     <EmbeddedResource Include="app.ico" LogicalName="app.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- ffmpeg for video backgrounds and their theme card stills, so builds run like the installed app. third-party isn't in git. -->
+    <None Include="..\..\third-party\ffmpeg\ffmpeg.exe" Link="ffmpeg.exe" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\third-party\ffmpeg\ffmpeg.exe')" />
   </ItemGroup>
 </Project>

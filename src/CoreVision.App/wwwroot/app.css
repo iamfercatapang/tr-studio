@@ -103,6 +103,8 @@ html, body { height: 100%; margin: 0; }
 body {
   display: grid;
   grid-template-columns: 220px 1fr;
+  grid-template-rows: var(--titlebar-height) minmax(0, 1fr);
+  height: 100vh;
   background: var(--mesh), var(--bg);
   color: var(--text);
   overflow: hidden;
@@ -110,6 +112,32 @@ body {
 }
 
 h1, h2, h3, p, dl, dd { margin: 0; }
+
+/* The app's own title bar, in place of Windows'. The strip drags the window and double-click maximizes it. */
+:root { --titlebar-height: 32px; }
+.titlebar {
+  grid-column: 1 / -1;
+  position: relative; z-index: 30; /* above the loading screen, so the window can always be closed */
+  display: flex; justify-content: flex-end;
+  height: var(--titlebar-height);
+  background: var(--bg);
+  -webkit-app-region: drag; app-region: drag;
+}
+.window-controls { display: flex; -webkit-app-region: no-drag; app-region: no-drag; }
+.window-button {
+  width: 46px; height: var(--titlebar-height);
+  display: grid; place-items: center;
+  padding: 0; border-radius: 0; box-shadow: none;
+  background: transparent; color: var(--text-secondary);
+  transition: background-color var(--duration-fast) ease-out, color var(--duration-fast) ease-out;
+}
+.window-button svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1; shape-rendering: crispEdges; }
+.window-button.close svg { shape-rendering: geometricPrecision; }
+.window-button:hover:not(:disabled) { background: var(--surface-hover); color: var(--text); }
+.window-button:active:not(:disabled) { transform: none; background: var(--surface-active); }
+/* Red for close is the Windows convention, so it stays even though red otherwise means a warning here. */
+.window-button.close:hover:not(:disabled) { background: #e81123; color: #fff; }
+.window-button.close:active:not(:disabled) { background: #f1707a; }
 h2 { font-size: 1.75rem; font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; }
 h3 { font-size: 1.0625rem; font-weight: 600; letter-spacing: -0.01em; }
 
@@ -182,6 +210,34 @@ nav { position: relative; display: flex; flex-direction: column; gap: 2px; }
   box-shadow: inset 2px 0 0 var(--accent), inset 0 0 0 1px var(--hairline);
   will-change: transform;
 }
+/* Sidebar player. It sits above the warnings and status, and only shows while something plays. */
+.now-playing {
+  margin-top: auto;
+  display: flex; flex-direction: column; gap: var(--space-2);
+  padding: 10px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--edge);
+}
+.now-playing[hidden] { display: none; }
+.now-playing:not([hidden]) ~ .alert-banner, .now-playing:not([hidden]) ~ .status { margin-top: var(--space-2); }
+.np-song { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.np-art { flex: none; width: 40px; height: 40px; border-radius: var(--radius-xs); object-fit: cover; }
+.np-art[hidden] { display: none; }
+.np-text { display: flex; flex-direction: column; min-width: 0; }
+.np-text strong, .np-text span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.np-text strong { font-size: 0.8125rem; font-weight: 600; color: var(--text); }
+.np-text span { font-size: 0.75rem; color: var(--text-secondary); }
+.np-progress { display: flex; flex-direction: column; gap: var(--space-1); }
+.np-progress[hidden] { display: none; }
+.np-track { height: 3px; border-radius: 2px; background: var(--track); overflow: hidden; }
+.np-bar { display: block; height: 100%; background: var(--accent); transform-origin: left; transform: scaleX(0); transition: transform 1s linear; }
+.np-time { font-family: var(--font-mono); font-size: 0.6875rem; color: var(--text-secondary); }
+.np-controls { display: flex; justify-content: center; gap: var(--space-1); }
+.np-controls button { width: 32px; height: 32px; padding: 0; display: grid; place-items: center; }
+.np-controls .np-play { background: var(--surface-active); }
+@media (prefers-reduced-motion: reduce) { .np-bar { transition: none; } }
+
 .alert-banner {
   margin-top: auto;
   display: flex; flex-direction: column; gap: 6px;
@@ -208,7 +264,7 @@ nav { position: relative; display: flex; flex-direction: column; gap: 2px; }
 .status[data-state="Connected"] .status-dot { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
 .status[data-state="Unsupported"] .status-dot { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
 
-main { min-width: 0; height: 100vh; }
+main { min-width: 0; min-height: 0; height: 100%; }
 .page { height: 100%; overflow-y: auto; animation: appear var(--duration) ease-out; }
 .page[hidden] { display: none; }
 @keyframes appear { from { opacity: 0; } }
@@ -313,7 +369,9 @@ main { min-width: 0; height: 100vh; }
 .stat-fill.load { background: var(--gradient-load); }
 
 /* Themes page */
-#page-themes { padding: var(--space-7) var(--space-8) var(--space-8); }
+#page-themes, #page-settings { padding: var(--space-7) var(--space-8) var(--space-8); }
+.settings-options { max-width: 520px; }
+.settings-options .switch { margin: 0; }
 .page-header { margin-bottom: 22px; }
 .hero { display: flex; gap: var(--space-8); align-items: center; margin-bottom: 36px; }
 .screen {
@@ -346,6 +404,22 @@ main { min-width: 0; height: 100vh; }
 .playlist-controls .field:last-child { margin-bottom: 0; }
 
 .alerts-panel { margin-bottom: 30px; padding: var(--space-4) 18px; border-radius: var(--radius); background: var(--surface); box-shadow: var(--edge); }
+.widget-settings { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); margin-bottom: var(--space-4); }
+.inspector .weather-now { padding: 10px; }
+.weather-now .actions { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
+.weather-body { display: grid; gap: var(--space-3); max-width: 520px; }
+.weather-now { display: flex; flex-direction: column; gap: 2px; padding: var(--space-3); border-radius: var(--radius-md); background: var(--surface-raised); }
+.weather-now strong { font-size: 0.875rem; font-weight: 600; }
+.weather-now span { font-size: 0.75rem; color: var(--text-secondary); }
+.weather-now .reading { font-family: var(--font-mono); color: var(--text); }
+.weather-now .problem { color: var(--warn); }
+.weather-search { display: flex; gap: var(--space-2); }
+.weather-search input { flex: 1; min-width: 0; height: 34px; padding: 0 10px; border: 0; border-radius: var(--radius-sm); background: var(--surface-raised); color: var(--text); font: inherit; font-size: 0.8125rem; box-shadow: var(--edge); }
+.weather-results { display: flex; flex-direction: column; gap: var(--space-1); }
+.weather-results:empty { display: none; }
+.weather-results button { justify-content: flex-start; text-align: left; height: auto; padding: var(--space-2) 10px; }
+.weather-results p { margin: 0; font-size: 0.75rem; color: var(--text-secondary); }
+.weather-units { margin: 0; }
 .alerts-intro { margin: var(--space-1) 0 14px; font-size: 0.8125rem; color: var(--text-secondary); }
 .alert-rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
 .alert-rule { display: flex; flex-direction: column; gap: 10px; padding: var(--space-3); border-radius: var(--radius-md); background: var(--surface-raised); transition: box-shadow var(--duration) ease-out; }

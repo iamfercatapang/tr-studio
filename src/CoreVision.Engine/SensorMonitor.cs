@@ -27,7 +27,8 @@ public sealed record RawStats(
     double? CpuClock = null, double? GpuClock = null, double? GpuFan = null,
     double? GpuHotSpot = null, double? GpuMemoryTemp = null, double? MotherboardTemp = null,
     double? PumpRpm = null, double? CpuFanRpm = null, double? CaseFanRpm = null,
-    double? MemoryUsed = null, double? MemoryAvailable = null, double? MemorySpeed = null);
+    double? MemoryUsed = null, double? MemoryAvailable = null, double? MemorySpeed = null,
+    double? GpuMemoryUsed = null);
 
 public sealed record Stats(
     Reading CpuTemp, Reading CpuLoad, Reading CpuPower,
@@ -39,7 +40,16 @@ public sealed record Stats(
     Reading MemoryUsed, Reading MemoryAvailable, Reading MemorySpeed)
 {
     const double MinTemp = 1, MaxTemp = 125, MaxLoad = 100, MinCpuPower = 0.5, MaxPower = 1000;
-    const double MinClock = 1, MaxClock = 12000, MaxRpm = 20000, MaxMemoryGb = 8192, MaxMemorySpeed = 20000;
+    const double MinClock = 1, MaxClock = 12000, MaxRpm = 20000, MaxMemoryGb = 8192, MaxMemorySpeed = 20000, MaxGpuMemoryGb = 256;
+
+    /// <summary>Song progress from 0 to 100. It comes from the media app, not a sensor.</summary>
+    public Reading MusicProgress { get; init; } = new(null, ReadingState.Missing);
+
+    /// <summary>The temperature outside, from the weather forecast.</summary>
+    public Reading OutdoorTemp { get; init; } = new(null, ReadingState.Missing);
+
+    /// <summary>Video memory in use, in GB.</summary>
+    public Reading GpuMemoryUsed { get; init; } = new(null, ReadingState.Missing);
 
     public Reading Get(Metric metric) => metric switch
     {
@@ -62,6 +72,9 @@ public sealed record Stats(
         Metric.MemoryUsed => MemoryUsed,
         Metric.MemoryAvailable => MemoryAvailable,
         Metric.MemorySpeed => MemorySpeed,
+        Metric.MusicProgress => MusicProgress,
+        Metric.OutdoorTemp => OutdoorTemp,
+        Metric.GpuMemoryUsed => GpuMemoryUsed,
         _ => new Reading(null, ReadingState.Missing),
     };
 
@@ -84,7 +97,10 @@ public sealed record Stats(
         Reading.Check(raw.CaseFanRpm, 0, MaxRpm),
         Reading.Check(raw.MemoryUsed, 0, MaxMemoryGb),
         Reading.Check(raw.MemoryAvailable, 0, MaxMemoryGb),
-        Reading.Check(raw.MemorySpeed, 1, MaxMemorySpeed));
+        Reading.Check(raw.MemorySpeed, 1, MaxMemorySpeed))
+    {
+        GpuMemoryUsed = Reading.Check(raw.GpuMemoryUsed / 1024, 0, MaxGpuMemoryGb), // the sensor reports MB
+    };
 
     public Stats AsStale() => new(
         CpuTemp.AsStale(), CpuLoad.AsStale(), CpuPower.AsStale(),
@@ -93,7 +109,10 @@ public sealed record Stats(
         CpuClock.AsStale(), GpuClock.AsStale(), GpuFan.AsStale(),
         GpuHotSpot.AsStale(), GpuMemoryTemp.AsStale(), MotherboardTemp.AsStale(),
         PumpRpm.AsStale(), CpuFanRpm.AsStale(), CaseFanRpm.AsStale(),
-        MemoryUsed.AsStale(), MemoryAvailable.AsStale(), MemorySpeed.AsStale());
+        MemoryUsed.AsStale(), MemoryAvailable.AsStale(), MemorySpeed.AsStale())
+    {
+        GpuMemoryUsed = GpuMemoryUsed.AsStale(),
+    };
 
     public static Stats Empty { get; } = From(new RawStats());
 }

@@ -8,6 +8,8 @@ Tray app that drives the Thermalright Core Vision 360 AIO screen. .NET 8 WinForm
 - Test: `dotnet test tests/CoreVision.Engine.Tests`
 - UI preview without the app: `node tools/UiPreview/server.js` (port 4173). It loads `tools/UiPreview/mock.js`; when you add a message between the page and the app, add it to the mock too.
 - Installer: `powershell -File tools/BuildInstaller.ps1` (needs Inno Setup 6 and `third-party/ffmpeg/ffmpeg.exe`), output in `artifacts/`.
+- `third-party/` isn't in git.
+- Probes for checking features by hand: `tools/MediaProbe` (what Windows reports as playing), `tools/WeatherProbe <city> <out.jpg>` (live Open-Meteo forecast), `tools/ScreenProbe`, `tools/SensorProbe`.
 
 ## Conventions
 
@@ -15,4 +17,6 @@ Tray app that drives the Thermalright Core Vision 360 AIO screen. .NET 8 WinForm
 - Record user-facing changes in [CHANGELOG.md](CHANGELOG.md).
 - The product name is TR Studio. Internal names stay as they are: `CoreVision.App.exe`, the `CoreVision.*` namespaces, `C:\ProgramData\CoreVisionStudio`, the `CoreVisionStudio` startup task and mutex.
 - A sensor that can't be read shows a dash and never raises a warning.
+- Windows' media objects only work on the thread that created them: keep `MediaMonitor`'s calls on its own thread.
+- The weather is TR Studio's only internet use. It sends only the chosen city's coordinates to Open-Meteo.
 - Fan and pump speeds are read-only. Fan control was considered and left out: it needs admin and a kernel driver, and FanControl (Rem0o) already does it. Don't reverse engineer FanControl.

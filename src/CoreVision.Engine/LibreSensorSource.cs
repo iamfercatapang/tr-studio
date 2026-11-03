@@ -49,7 +49,8 @@ public sealed class LibreSensorSource : ISensorSource
             CaseFanRpm: Find(board, SensorType.Fan, CaseFanHeader),
             MemoryUsed: Find(memory, SensorType.Data, "Memory Used"),
             MemoryAvailable: Find(memory, SensorType.Data, "Memory Available"),
-            MemorySpeed: _memorySpeed);
+            MemorySpeed: _memorySpeed,
+            GpuMemoryUsed: Find(gpu, SensorType.SmallData, "GPU Memory Used"));
     }
 
     static double? Find(IHardware? hardware, SensorType type, string name) =>
