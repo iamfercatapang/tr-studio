@@ -126,3 +126,7 @@ A few internal names, like `CoreVision.App.exe`, come from the project's working
 [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) reads the sensors, and [FFmpeg](https://ffmpeg.org/) decodes video.
 
 The interface uses the GothamSSm font when it's installed, and Segoe UI otherwise. The font isn't included.
+
+## License
+
+TR Studio is released under the [MIT License](LICENSE). The installer also includes FFmpeg, which keeps its own LGPL license, installed as `ffmpeg-LICENSE.txt`. LibreHardwareMonitor is used under the MPL 2.0.
