@@ -115,6 +115,16 @@ public sealed record Stats(
     };
 
     public static Stats Empty { get; } = From(new RawStats());
+
+    /// <summary>Metrics read from the PC's sensors. Song progress and the outdoor temperature come from elsewhere.</summary>
+    public static bool IsSensor(Metric metric) => metric is not (Metric.MusicProgress or Metric.OutdoorTemp);
+
+    static readonly Metric[] SensorMetrics = Enum.GetValues<Metric>().Where(IsSensor).ToArray();
+
+    public static int SensorCount => SensorMetrics.Length;
+
+    /// <summary>How many sensor readings can be shown right now.</summary>
+    public int KnownCount() => SensorMetrics.Count(metric => Get(metric).State == ReadingState.Ok);
 }
 
 public interface ISensorSource : IDisposable
@@ -138,6 +148,15 @@ public sealed class SensorMonitor : IDisposable
     volatile Sample? _latest;
     string? _lastError;
 
+    /// <summary>Matches the app's own loading screen, so the cooler and the window finish together.</summary>
+    public static readonly TimeSpan LoadingSettle = TimeSpan.FromSeconds(2);
+    public static readonly TimeSpan LoadingLimit = TimeSpan.FromSeconds(20);
+    readonly object _loadingLock = new();
+    DateTime _startedAt;
+    int _knownCount = -1;
+    DateTime _knownSince;
+    bool _loaded;
+
     sealed record Sample(Stats Stats, DateTime Time);
 
     public SensorMonitor(Func<ISensorSource> open, TimeSpan? interval = null, TimeSpan? staleAfter = null,
@@ -151,7 +170,43 @@ public sealed class SensorMonitor : IDisposable
         _thread = new Thread(Run) { IsBackground = true, Name = "SensorMonitor" };
     }
 
-    public void Start() => _thread.Start();
+    public void Start()
+    {
+        lock (_loadingLock) _startedAt = _now();
+        _thread.Start();
+    }
+
+    /// <summary>
+    /// True while the first readings are still arriving. Some readings never arrive on some PCs, so loading
+    /// also ends once the set of readings stops growing, and at a hard limit if none come. Once over, it stays over.
+    /// </summary>
+    public bool IsLoading
+    {
+        get
+        {
+            lock (_loadingLock)
+            {
+                if (_loaded) return false;
+                var now = _now();
+                if (now - _startedAt >= LoadingLimit
+                    || _knownCount == Stats.SensorCount
+                    || (_knownCount > 0 && now - _knownSince >= LoadingSettle))
+                    _loaded = true;
+                return !_loaded;
+            }
+        }
+    }
+
+    void NoteKnown(Stats stats, DateTime time)
+    {
+        var known = stats.KnownCount();
+        lock (_loadingLock)
+        {
+            if (_loaded || known == _knownCount) return;
+            _knownCount = known;
+            _knownSince = time;
+        }
+    }
 
     public Stats Current
     {
@@ -180,7 +235,9 @@ public sealed class SensorMonitor : IDisposable
                 try
                 {
                     source ??= _open();
-                    _latest = new Sample(Stats.From(source.Read()), _now());
+                    var sample = new Sample(Stats.From(source.Read()), _now());
+                    _latest = sample;
+                    NoteKnown(sample.Stats, sample.Time);
                     _lastError = null;
                 }
                 catch (Exception e)

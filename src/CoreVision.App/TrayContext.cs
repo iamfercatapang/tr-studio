@@ -19,7 +19,8 @@ sealed class TrayContext : ApplicationContext
         return fonts.Families.Select(family => family.Name).ToArray();
     });
 
-    readonly FileLog _log = new();
+    readonly FileLog _log;
+    bool _crashedLastTime;
     readonly ScreenLink _link;
     readonly SensorMonitor _sensors;
     readonly MediaMonitor _media;
@@ -45,8 +46,10 @@ sealed class TrayContext : ApplicationContext
     Settings _settings = Settings.Load();
     int _previewPending;
 
-    public TrayContext(bool startHidden)
+    public TrayContext(bool startHidden, FileLog log, bool crashedLastTime)
     {
+        _log = log;
+        _crashedLastTime = crashedLastTime;
         _specs = new(() => Task.Run(() => SystemSpecs.Read(Log)));
         Log($"Started as {Environment.UserName}, profile {Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)}");
         _themes = new ThemeStore(Path.Combine(Settings.DataFolder, "themes"), Log);
@@ -71,8 +74,10 @@ sealed class TrayContext : ApplicationContext
 
         _ffmpeg = ThemeStore.FindFfmpeg();
         _player = new ThemePlayer(_themes.Load(_settings.ThemePath), () => _sensors.Current, _link.Submit,
-            spec => Backgrounds.Create(spec, _ffmpeg, Log, _player!.Screen.Width, _player.Screen.Height), Log) { Media = () => _media.Current, Weather = () => _weather.Current };
+            spec => Backgrounds.Create(spec, _ffmpeg, Log, _player!.Screen.Width, _player.Screen.Height), Log) { Media = () => _media.Current, Weather = () => _weather.Current, Loading = () => _sensors.IsLoading,
+            ReportError = error => CrashReporter.ReportOnce(error, "frame") };
         _player.Rotation = _settings.Rotation;
+        _player.Screen = Effective(_detectedScreen);
         _player.FrameRendered += OnFrameRendered;
         _player.Start();
         _media.Changed += () =>
@@ -110,11 +115,21 @@ sealed class TrayContext : ApplicationContext
 
     public void Log(string line) => _log.Write(line);
 
+    /// <summary>The screen as reported, before the user's Round Screen choice is applied.</summary>
+    ScreenInfo _detectedScreen = ScreenInfo.Default;
+
+    ScreenInfo Effective(ScreenInfo screen) => screen with { Round = _settings.RoundScreen ?? screen.Round };
+
     /// <summary>A newly detected screen resizes the frames first, so its first image already fits.</summary>
     void OnLinkStatus(LinkStatus status)
     {
-        var resized = status.Screen is { } screen && screen != _player.Screen;
-        if (resized) _player.Screen = status.Screen!;
+        if (status.Screen is { } detected)
+        {
+            _detectedScreen = detected;
+            CrashReporter.ScreenModel = detected.Model;
+        }
+        var resized = status.Screen is { } screen && Effective(screen) != _player.Screen;
+        if (resized) _player.Screen = Effective(status.Screen!);
         _ui.Post(_ =>
         {
             ShowStatus(status);
@@ -278,6 +293,15 @@ sealed class TrayContext : ApplicationContext
         ["title"] = NotificationTitle(alert),
         ["detail"] = alert.Detail,
     }).ToArray());
+
+    /// <summary>Some screens report the wrong shape. Null goes back to what the screen reports.</summary>
+    public void SetRoundScreen(bool? round)
+    {
+        _settings = _settings with { RoundScreen = round };
+        SaveSettings();
+        _player.Screen = Effective(_detectedScreen);
+        SendState();
+    }
 
     public void SetRotation(int degrees)
     {
@@ -472,6 +496,42 @@ sealed class TrayContext : ApplicationContext
         _updates.Automatic = enabled;
     }
 
+    public void SetCrashReports(bool enabled)
+    {
+        _settings = _settings with { CrashReports = enabled };
+        SaveSettings();
+        CrashReporter.Apply(enabled, _log);
+        SendState();
+    }
+
+    const string Repository = "https://github.com/iamfercatapang/tr-studio";
+
+    /// <summary>Opens a bug report form with the versions filled in. Nothing personal goes in the link.</summary>
+    public void ReportProblem()
+    {
+        var model = _detectedScreen == ScreenInfo.Default ? "" : _detectedScreen.Model;
+        OpenInBrowser($"{Repository}/issues/new?template=bug_report.yml" +
+            $"&version={Uri.EscapeDataString(UpdateService.Current.ToString())}" +
+            $"&model={Uri.EscapeDataString(model)}" +
+            $"&windows={Uri.EscapeDataString(System.Runtime.InteropServices.RuntimeInformation.OSDescription)}");
+    }
+
+    public void AskQuestion() => OpenInBrowser($"{Repository}/discussions");
+
+    public void OpenLogFolder()
+    {
+        try { Process.Start(new ProcessStartInfo("explorer.exe", $"\"{_log.Folder}\"") { UseShellExecute = true })?.Dispose(); }
+        catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException) { Log($"Could not open the log folder: {e.Message}"); }
+    }
+
+    /// <summary>Only TR Studio's own pages are opened, never an address the page made up.</summary>
+    void OpenInBrowser(string url)
+    {
+        if (!url.StartsWith(Repository + "/", StringComparison.Ordinal)) return;
+        try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true })?.Dispose(); }
+        catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException) { Log($"Could not open the browser: {e.Message}"); }
+    }
+
     public void ControlMedia(string? action)
     {
         if (action != null) _media.Send(action);
@@ -487,11 +547,13 @@ sealed class TrayContext : ApplicationContext
         var playlist = Playlist;
         var alertSettings = Alerts;
         var activeAlerts = ActiveAlertsJson();
+        var crashedLastTime = _crashedLastTime;
+        if (_window != null) _crashedLastTime = false; // the page offers a report once
         Task.Run(() =>
         {
             var themes = new JsonArray();
             var screen = _player.Screen;
-            using var renderer = new ThemeRenderer(screen.Width, screen.Height, screen.JpegQuality);
+            using var renderer = new ThemeRenderer(screen.Width, screen.Height, screen.JpegQuality) { RoundScreen = screen.Round };
             foreach (var entry in entries)
             {
                 var theme = _themes.Load(entry.Path);
@@ -515,6 +577,10 @@ sealed class TrayContext : ApplicationContext
                 ["alertSettings"] = JsonSerializer.SerializeToNode(alertSettings, PageJson),
                 ["alerts"] = activeAlerts,
                 ["screen"] = new JsonObject { ["width"] = screen.Width, ["height"] = screen.Height, ["round"] = screen.Round, ["model"] = screen.Model },
+                ["roundOverride"] = _settings.RoundScreen,
+                ["crashReports"] = _settings.CrashReports,
+                ["crashReportsAvailable"] = CrashReporter.IsAvailable,
+                ["crashedLastTime"] = crashedLastTime,
                 ["startup"] = WindowsStartup.IsEnabled(),
                 ["fonts"] = new JsonArray(InstalledFonts.Value.Select(name => (JsonNode?)name).ToArray()),
                 ["status"] = StatusJson(status),

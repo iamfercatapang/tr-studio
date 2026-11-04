@@ -4,8 +4,10 @@ using CoreVision.Engine;
 namespace CoreVision.App;
 
 sealed record Settings(string? ThemePath = null, int Rotation = 0, bool PausedTrccStartup = false, ThemePlaylist? Playlist = null,
-    AlertSettings? Alerts = null, WeatherPlace? WeatherPlace = null, WeatherUnits WeatherUnits = WeatherUnits.Metric, bool CheckForUpdates = true)
+    AlertSettings? Alerts = null, WeatherPlace? WeatherPlace = null, WeatherUnits WeatherUnits = WeatherUnits.Metric, bool CheckForUpdates = true,
+    bool? RoundScreen = null, bool? CrashReports = null)
 {
+    // RoundScreen: null follows what the screen reports. CrashReports: null means the user hasn't been asked yet.
     public static string DataFolder { get; } =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "CoreVisionStudio");
 

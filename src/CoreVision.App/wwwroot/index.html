@@ -75,7 +75,7 @@
         <div class="playlist-body">
           <ol class="playlist-list" id="playlistList"></ol>
           <div class="playlist-controls">
-            <label class="field"><span>Add a Theme</span><select id="playlistAdd"></select></label>
+            <button type="button" class="playlist-add" id="playlistAdd">Add Themes…</button>
             <label class="field"><span>Switch Every<output id="playlistTime"></output></span><input id="playlistSeconds" type="range" min="5" max="600" step="5"></label>
           </div>
         </div>
@@ -106,6 +106,16 @@
         <div class="section-header"><h3 id="updatesTitle">Updates</h3></div>
         <div class="settings-options" id="updateOptions"></div>
         <div class="update-status" id="updateStatus" aria-live="polite"></div>
+      </section>
+      <section class="alerts-panel" aria-labelledby="helpTitle">
+        <div class="section-header"><h3 id="helpTitle">Help &amp; Feedback</h3></div>
+        <p class="alerts-intro">Something not working? Report it on GitHub and attach your log file, so it can be fixed.</p>
+        <div class="settings-options" id="crashOptions"></div>
+        <div class="help-actions">
+          <button type="button" id="reportProblem" class="primary">Report a Problem…</button>
+          <button type="button" id="askQuestion">Ask a Question…</button>
+          <button type="button" id="openLogs">Open Log Folder</button>
+        </div>
       </section>
     </section>
 
@@ -242,6 +252,16 @@
     <div class="dialog-actions">
       <button type="button" id="captureRefresh">Refresh</button>
       <button type="button" id="captureCancel">Cancel</button>
+    </div>
+  </dialog>
+
+  <dialog id="playlistDialog" class="capture-dialog" aria-labelledby="playlistDialogTitle">
+    <h3 id="playlistDialogTitle">Add to Playlist</h3>
+    <p>Pick the themes to add. They play in the order you pick them.</p>
+    <div class="capture-sources playlist-picker" id="playlistPicker"></div>
+    <div class="dialog-actions">
+      <button type="button" id="playlistPickerCancel">Cancel</button>
+      <button type="button" class="primary" id="playlistPickerAdd" disabled>Add Themes</button>
     </div>
   </dialog>
 

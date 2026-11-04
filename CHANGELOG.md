@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- **A spinner on the cooler while sensors start.** Right after TR Studio starts, a theme that shows readings is covered by a spinning ring and "Reading sensors" until they arrive, instead of a screen of dashes. Themes with only a clock or pictures show straight away.
+- **Easier Theme Playlist.** Add Themes opens a picker with every theme's picture: click the ones you want, in the order they should play, then add them all at once. Each theme card also has a badge: + adds it to the playlist, and its number removes it.
+- **More progress styles for the Music widget**: Bar, Line, Segments, Around Art (traces the album art) and Screen Edge (runs around the screen's border, a circle on round screens and a rounded rectangle on square or wide ones). Pick one from the pictures under Progress in the Editor.
+- **The Now Playing theme fits every screen.** Its progress now runs around the screen's edge in whatever shape the screen is.
+- **The Round Screen switch now reaches the cooler**, so edge styles follow the shape you choose. Your earlier choice carries over.
+- **Opt-in crash reports.** TR Studio asks once whether it may send a report when it crashes, and nothing is sent until you say yes. Reports go to Sentry without your user name, PC name or folders. The switch is in Settings.
+- **Help & Feedback in Settings**: Report a Problem opens a GitHub bug form with your versions filled in, Ask a Question opens Discussions, and Open Log Folder shows the log to attach. After a crash, TR Studio offers to report it the next time it opens.
+
 ## 1.4.1 (Nov 4, 2026)
 
 - **The Theme Playlist can hold every theme you have**, not just 3. Add themes until none are left.

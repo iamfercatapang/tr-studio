@@ -171,6 +171,21 @@ sealed class MainWindow : Form
                 case "rotate":
                     _app.SetRotation((int?)message["degrees"] ?? 0);
                     break;
+                case "crashReports":
+                    _app.SetCrashReports((bool?)message["enabled"] == true);
+                    break;
+                case "reportProblem":
+                    _app.ReportProblem();
+                    break;
+                case "askQuestion":
+                    _app.AskQuestion();
+                    break;
+                case "openLogs":
+                    _app.OpenLogFolder();
+                    break;
+                case "roundScreen":
+                    _app.SetRoundScreen((bool?)message["round"]);
+                    break;
                 case "startup":
                     _app.SetStartup((bool?)message["enabled"] == true);
                     break;

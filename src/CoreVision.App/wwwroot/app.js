@@ -73,7 +73,7 @@ const NEW_WEATHER = {
 const NEW_MUSIC = {
   kind: 'Music', x: 240, y: 240, size: 300, bold: true, cornerRadius: 16,
   color: '#FFFFFF', secondaryColor: '#98989D', endColor: '#00E5FF', trackColor: '#2A2A2E',
-  showArt: true, showTitle: true, showArtist: true, showProgress: true,
+  showArt: true, showTitle: true, showArtist: true, showProgress: true, progressStyle: 'Bar',
 };
 const NEW_TEXT_SIZE = 40;
 const MIN_HANDLE = 16;
@@ -115,6 +115,14 @@ const ICONS = {
   Up: '<path d="M8 13V3M3.5 7.5L8 3l4.5 4.5"/>',
   Down: '<path d="M8 3v10M3.5 8.5L8 13l4.5-4.5"/>',
   Remove: '<path d="M4 4l8 8M12 4l-8 8"/>',
+  Add: '<path d="M8 3v10M3 8h10"/>',
+  ProgressOff: '<rect x="1.5" y="6.5" width="13" height="3" rx="1.5" stroke-dasharray="2 2"/>',
+  ProgressBar: '<rect x="1.5" y="6.5" width="13" height="3" rx="1.5"/><path d="M3 8h5" stroke-width="3"/>',
+  ProgressLine: '<path d="M1.5 8h13"/><circle cx="8" cy="8" r="1.75" fill="currentColor"/>',
+  ProgressSegments: '<path d="M1.5 8h2M5 8h2M8.5 8h2M12 8h2.5" stroke-width="2.5"/>',
+  ProgressAroundArt: '<rect x="4.5" y="4.5" width="7" height="7" rx="1.5"/><path d="M8 1.75h4.25a2 2 0 0 1 2 2V10"/>',
+  ProgressScreenEdge: '<rect x="1.5" y="2.5" width="13" height="11" rx="2.5"/><path d="M5 6.5h6M5 9.5h4"/>',
+  Check: '<path d="M3 8.5l3.25 3.25L13 5"/>',
   Warning: '<path d="M8 2l6.5 11.5h-13z"/><path d="M8 6.5v3M8 11.5v.01"/>',
   Update: '<path d="M8 2v8M4.5 6.5L8 10l3.5-3.5"/><path d="M2.5 11v1.5a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V11"/>',
   Shown: '<path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/>',
@@ -160,11 +168,15 @@ function screenArea() {
   return { w, h, left: (SCREEN - w) / 2, top: (SCREEN - h) / 2 };
 }
 
-function roundPreference() {
-  try { return localStorage.getItem('roundScreen'); } catch { return null; }
+/* Older versions kept the Round Screen choice in the page only. It moves to the app once, so the cooler sees it too. */
+function migrateRoundPreference(override) {
+  let saved = null;
+  try { saved = localStorage.getItem('roundScreen'); localStorage.removeItem('roundScreen'); } catch { /* nothing to move */ }
+  if (override == null && saved !== null) send({ type: 'roundScreen', round: saved === 'true' });
 }
 
-const isRound = () => (roundPreference() ?? String(app.screen.round)) === 'true';
+/* The app sends the shape with the user's choice already applied. */
+const isRound = () => Boolean(app.screen.round);
 
 /* Shapes every preview to match the connected screen. */
 function applyScreenShape() {
@@ -673,20 +685,64 @@ function renderPlaylist() {
   $('playlistOn').disabled = tooFew;
   $('playlistList').replaceChildren(...paths.map(playlistRow));
   if (tooFew) {
-    $('playlistList').append(element('li', { className: 'playlist-empty', textContent: `Add ${PLAYLIST.minThemes} or more themes to show them in turn. Their order here is the order they play.` }));
+    $('playlistList').append(element('li', { className: 'playlist-empty', textContent: `Add ${PLAYLIST.minThemes} or more themes with Add Themes, or the + on a theme below. Their order here is the order they play.` }));
   }
-  const left = app.themes.filter((theme) => !paths.includes(theme.path));
-  const prompt = element('option', { value: '', textContent: left.length ? 'Choose…' : 'All themes added' });
-  $('playlistAdd').replaceChildren(prompt, ...left.map((theme, index) => element('option', { value: index, textContent: theme.name })));
-  $('playlistAdd').disabled = !left.length;
-  $('playlistAdd').onchange = (event) => {
-    if (event.target.value === '') return;
-    paths.push(left[Number(event.target.value)].path);
-    savePlaylist();
-  };
+  const left = app.themes.some((theme) => !paths.includes(theme.path));
+  $('playlistAdd').textContent = left ? 'Add Themes…' : 'All Themes Added';
+  $('playlistAdd').disabled = !left;
   $('playlistSeconds').value = seconds;
   $('playlistTime').textContent = formatPlaylistTime(seconds);
   markShowingTheme();
+}
+
+function togglePlaylistTheme(path) {
+  const { paths } = app.playlist;
+  const index = paths.indexOf(path);
+  if (index >= 0) paths.splice(index, 1);
+  else paths.push(path);
+  savePlaylist();
+}
+
+/* Themes are picked by their picture, several at once, in the order they're clicked. */
+const playlistPicks = [];
+
+function renderPlaylistPicker() {
+  const { paths } = app.playlist;
+  const tiles = app.themes.map((theme) => {
+    const added = paths.indexOf(theme.path);
+    const picked = playlistPicks.indexOf(theme.path);
+    const thumb = element('span', { className: 'capture-thumb theme-thumb' });
+    if (theme.thumb) thumb.append(element('img', { src: `data:image/jpeg;base64,${theme.thumb}`, alt: '' }));
+    const tile = element('button', {
+      type: 'button',
+      className: 'capture-card picker-card',
+      disabled: added >= 0,
+      title: added >= 0 ? `${theme.name} is already in the playlist` : theme.name,
+      onclick: () => {
+        if (picked >= 0) playlistPicks.splice(picked, 1);
+        else playlistPicks.push(theme.path);
+        renderPlaylistPicker();
+        document.querySelector(`#playlistPicker [data-path="${CSS.escape(theme.path)}"]`)?.focus();
+      },
+    }, thumb, element('span', { className: 'capture-name', textContent: theme.name }),
+    element('span', { className: 'capture-detail', textContent: added >= 0 ? 'Already in the playlist' : picked >= 0 ? 'Picked' : ' ' }));
+    tile.dataset.path = theme.path ?? '';
+    tile.setAttribute('aria-pressed', String(picked >= 0 || added >= 0));
+    if (added >= 0) tile.append(element('span', { className: 'theme-order', textContent: added + 1 }));
+    else if (picked >= 0) tile.append(element('span', { className: 'theme-order picked', textContent: paths.length + picked + 1 }));
+    return tile;
+  });
+  $('playlistPicker').replaceChildren(...tiles);
+  const count = playlistPicks.length;
+  $('playlistPickerAdd').disabled = !count;
+  $('playlistPickerAdd').textContent = count ? `Add ${count} Theme${count === 1 ? '' : 's'}` : 'Add Themes';
+}
+
+function openPlaylistPicker() {
+  playlistPicks.length = 0;
+  renderPlaylistPicker();
+  $('playlistDialog').showModal();
+  document.querySelector('#playlistPicker button:not(:disabled)')?.focus();
 }
 
 /* Warnings */
@@ -776,6 +832,47 @@ function renderStartupOptions() {
   }));
 }
 
+const CRASH_REPORT_DETAILS = 'A report holds the error, where in TR Studio it happened, the app and Windows versions, the cooler model and the last lines of the log. Your user name, PC name and folders are taken out. Nothing is sent without a crash.';
+
+function renderCrashOptions() {
+  const children = [];
+  if (app.crashReportsAvailable) {
+    children.push(plainToggle('Send Crash Reports', app.crashReports === true, (enabled) => setCrashReports(enabled)),
+      element('p', { className: 'hint', textContent: CRASH_REPORT_DETAILS }));
+  }
+  $('crashOptions').replaceChildren(...children);
+}
+
+function setCrashReports(enabled) {
+  app.crashReports = enabled;
+  send({ type: 'crashReports', enabled });
+  renderCrashOptions();
+}
+
+/* Asked once: nothing is sent until the user says yes. */
+function askAboutCrashReports() {
+  if (!app.crashReportsAvailable || app.crashReports != null || askAboutCrashReports.asked || $('confirm').open) return;
+  askAboutCrashReports.asked = true;
+  confirmDialog('Send crash reports?', 'If TR Studio crashes, it can send a report so the bug gets fixed. Reports hold the error, versions, cooler model and recent log lines, with your user name, PC name and folders taken out. You can change this in Settings.', [
+    { label: 'No', run: () => setCrashReports(false) },
+    { label: 'Send Reports', className: 'primary', run: () => setCrashReports(true) },
+  ]);
+}
+
+function offerCrashReport() {
+  const sent = app.crashReports === true ? ' A crash report was sent.' : '';
+  confirmDialog('TR Studio closed unexpectedly', `Sorry about that.${sent} Reporting what you were doing helps get it fixed.`, [
+    { label: 'Not Now' },
+    { label: 'Report a Problem…', className: 'primary', run: () => send({ type: 'reportProblem' }) },
+  ]);
+}
+
+/* Waits for the loading screen, so a prompt never pops up behind it. */
+function afterLoading(run) {
+  if (loading.done) run();
+  else setTimeout(() => afterLoading(run), 500);
+}
+
 function confirmUpdate() {
   const update = app.update;
   confirmDialog(`Install TR Studio ${update.version}?`,
@@ -829,8 +926,9 @@ function renderUpdate() {
 function renderScreenOptions() {
   $('screenOptions').replaceChildren(
     plainToggle('Round Screen', isRound(), (round) => {
-      try { localStorage.setItem('roundScreen', String(round)); } catch { /* the shape falls back to detection */ }
+      app.screen = { ...app.screen, round };
       applyScreenShape();
+      send({ type: 'roundScreen', round });
     }));
 }
 
@@ -882,7 +980,17 @@ function renderThemes() {
     const card = element('div', { className: 'theme-card' }, open, actions);
     card.dataset.path = theme.path ?? '';
     const order = app.playlist.paths.indexOf(theme.path);
-    if (order >= 0) card.prepend(element('span', { className: 'theme-order', textContent: order + 1, title: 'In the Theme Playlist' }));
+    const label = order >= 0 ? `Remove ${theme.name} from the playlist` : `Add ${theme.name} to the playlist`;
+    const badge = element('button', {
+      type: 'button',
+      className: order >= 0 ? 'theme-order' : 'theme-order add',
+      title: order >= 0 ? `Number ${order + 1} in the playlist. Click to remove it.` : 'Add to the playlist',
+      onclick: () => togglePlaylistTheme(theme.path),
+    });
+    if (order >= 0) badge.textContent = order + 1;
+    else badge.append(icon('Add'));
+    badge.setAttribute('aria-label', label);
+    card.prepend(badge);
     return card;
   });
   const add = element('button', { className: 'theme-open', onclick: () => newTheme() },
@@ -1054,7 +1162,9 @@ function musicLayout(item) {
   if (item.showArtist !== false) y += width * 0.058 * 1.3;
   if (item.showProgress !== false) {
     if (y > 0) y += width * 0.03;
-    y += Math.max(width * 0.018, 3) + width * 0.025 + width * 0.045 * 1.3;
+    const barRow = ['Bar', 'Line', 'Segments'].includes(progressStyleOf(item));
+    if (barRow) y += Math.max(width * 0.018, 3) + width * 0.025;
+    y += width * 0.045 * 1.3;
   }
   const height = Math.max(y, 1);
   return { left: item.x - width / 2, top: item.y - height / 2, width, height };
@@ -2186,7 +2296,7 @@ function musicControls(item) {
     toggle('Album Art', item.showArt !== false, (v) => { item.showArt = v; }),
     toggle('Song Title', item.showTitle !== false, (v) => { item.showTitle = v; }),
     toggle('Artist', item.showArtist !== false, (v) => { item.showArtist = v; }),
-    toggle('Progress Bar', item.showProgress !== false, (v) => { item.showProgress = v; }));
+    progressStyleField(item));
   if (item.showArt !== false) {
     const round = Math.round(item.size / 4);
     controls.push(slider('Art Corners', Math.min(item.cornerRadius ?? 0, round), { min: 0, max: round, step: 1, unit: ' px', reset: NEW_MUSIC.cornerRadius }, (v) => { item.cornerRadius = v; }));
@@ -2202,6 +2312,45 @@ function musicControls(item) {
   }
   controls.push(element('button', { textContent: 'Delete', className: 'danger wide', onclick: removeSelected }));
   return controls;
+}
+
+const PROGRESS_STYLES = [
+  { value: 'Off', label: 'Off' },
+  { value: 'Bar', label: 'Bar' },
+  { value: 'Line', label: 'Line' },
+  { value: 'Segments', label: 'Segments' },
+  { value: 'AroundArt', label: 'Around Art', needsArt: true },
+  { value: 'ScreenEdge', label: 'Edge', title: 'Screen Edge' },
+];
+
+/* Mirrors ThemeRenderer.EffectiveProgressStyle: Around Art needs the art, and falls back to a bar without it. */
+const progressStyleOf = (item) => {
+  const style = item.progressStyle ?? 'Bar';
+  return style === 'AroundArt' && item.showArt === false ? 'Bar' : style;
+};
+
+/* Each style is a small picture of itself, so the choice doesn't depend on reading the names. */
+function progressStyleField(item) {
+  const current = item.showProgress === false ? 'Off' : (item.progressStyle ?? 'Bar');
+  const tiles = PROGRESS_STYLES.map(({ value, label, title, needsArt }) => {
+    const disabled = needsArt && item.showArt === false;
+    const button = element('button', {
+      type: 'button', className: 'style-tile', disabled,
+      title: disabled ? 'Turn on Album Art to use this' : title ?? label,
+      onclick: () => {
+        remember();
+        item.showProgress = value !== 'Off';
+        if (value !== 'Off') item.progressStyle = value;
+        renderInspector();
+        changed();
+      },
+    }, icon(`Progress${value}`), element('span', { textContent: label }));
+    button.setAttribute('aria-pressed', String(value === current));
+    if (title) button.setAttribute('aria-label', title);
+    return button;
+  });
+  const hint = current === 'ScreenEdge' ? element('p', { className: 'hint', textContent: 'Runs around the edge of the screen: a circle on round screens, a rounded rectangle on the rest.' }) : '';
+  return element('div', { className: 'field' }, element('span', { textContent: 'Progress' }), element('div', { className: 'style-tiles', role: 'group' }, ...tiles), hint);
 }
 
 const isTemperature = (metric) => METRICS[metric]?.unit === DEGREE;
@@ -2324,6 +2473,12 @@ const handlers = {
     app.startup = Boolean(message.startup);
     app.removedDefaults = message.removedDefaults ?? 0;
     if (message.screen) app.screen = message.screen;
+    migrateRoundPreference(message.roundOverride);
+    app.crashReports = message.crashReports ?? null;
+    app.crashReportsAvailable = Boolean(message.crashReportsAvailable);
+    renderCrashOptions();
+    if (message.crashedLastTime) afterLoading(offerCrashReport);
+    else afterLoading(askAboutCrashReports);
     $('modelName').textContent = app.screen.model;
     applyScreenShape();
     renderScreenOptions();
@@ -2441,6 +2596,16 @@ host.addEventListener('message', (event) => handlers[event.data.type]?.(event.da
 
 document.querySelectorAll('.nav-item').forEach((node) => node.addEventListener('click', () => requestPage(node.dataset.page)));
 $('resetPanels').onclick = resetPanels;
+$('reportProblem').addEventListener('click', () => send({ type: 'reportProblem' }));
+$('askQuestion').addEventListener('click', () => send({ type: 'askQuestion' }));
+$('openLogs').addEventListener('click', () => send({ type: 'openLogs' }));
+$('playlistAdd').addEventListener('click', openPlaylistPicker);
+$('playlistPickerCancel').addEventListener('click', () => $('playlistDialog').close());
+$('playlistPickerAdd').addEventListener('click', () => {
+  app.playlist.paths.push(...playlistPicks.filter((path) => !app.playlist.paths.includes(path)));
+  $('playlistDialog').close();
+  savePlaylist();
+});
 $('playlistOn').addEventListener('change', (event) => { app.playlist.enabled = event.target.checked; savePlaylist(); });
 $('playlistSeconds').addEventListener('input', (event) => { $('playlistTime').textContent = formatPlaylistTime(Number(event.target.value)); });
 $('playlistSeconds').addEventListener('change', (event) => { app.playlist.seconds = Number(event.target.value); savePlaylist(); });

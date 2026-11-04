@@ -476,6 +476,35 @@ input.alert-limit::-webkit-inner-spin-button, input.alert-limit::-webkit-outer-s
   font-size: 0.75rem; font-weight: 700;
   pointer-events: none;
 }
+button.theme-order { padding: 0; box-shadow: none; pointer-events: auto; transition: opacity var(--duration-fast) ease-out, box-shadow var(--duration-fast) ease-out; }
+button.theme-order:hover:not(:disabled) { background: var(--gradient-brand); box-shadow: var(--glow-brand); }
+button.theme-order .icon { width: 12px; height: 12px; stroke-width: 2; }
+button.theme-order.add { background: var(--surface-raised); color: var(--text); box-shadow: 0 0 0 1px var(--hairline-strong); opacity: 0; }
+button.theme-order.add:hover { background: var(--surface-hover); box-shadow: 0 0 0 1px var(--accent), var(--glow-accent); }
+.theme-card:hover button.theme-order.add, button.theme-order.add:focus-visible { opacity: 1; }
+@media (hover: none) { button.theme-order.add { opacity: 1; } }
+.playlist-add { width: 100%; margin-bottom: var(--space-4); }
+.help-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
+#crashOptions .hint { margin: var(--space-1) 0 0; }
+.style-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.style-tile {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  height: 52px; padding: 4px 2px;
+  background: var(--surface-raised); box-shadow: var(--edge);
+  font-size: 0.6875rem; color: var(--text-secondary);
+}
+.style-tile .icon { width: 22px; height: 22px; }
+.style-tile[aria-pressed="true"] { color: var(--text); box-shadow: inset 0 0 0 1.5px var(--accent), var(--glow-accent); }
+.style-tile[aria-pressed="true"] .icon { color: var(--accent); }
+.style-tile:disabled { opacity: 0.4; }
+.field .style-tiles + .hint { margin: var(--space-2) 0 0; }
+.theme-card .theme-actions { left: 34px; } /* clear of the playlist badge */
+.picker-card { position: relative; }
+.picker-card .capture-thumb { aspect-ratio: var(--screen-ratio, 1); }
+.picker-card[aria-pressed="true"]:not(:disabled) { box-shadow: inset 0 0 0 1.5px var(--accent), var(--glow-accent); }
+.picker-card:disabled { opacity: 0.55; }
+.picker-card .theme-order { left: 12px; top: 12px; }
+.picker-card .theme-order.picked { background: var(--accent); }
 .section-header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .theme-grid {
   display: grid;

@@ -72,14 +72,28 @@ public sealed partial class ThemeRenderer : IDisposable
     readonly record struct CaptureKey(Rectangle Area, string? Process, string? Title, Size Fitted);
     readonly Stopwatch _sinceRender = Stopwatch.StartNew();
     double _frameSeconds;
+    float _scale = 1;
 
     /// <summary>True while a gauge is still easing toward its latest reading.</summary>
     public bool IsAnimating { get; private set; }
 
+    /// <summary>A round screen shows only the circle inside its square, so edge-hugging parts follow that circle.</summary>
+    public bool RoundScreen { get; init; }
+
+    const int LoadingScrimAlpha = 200;
+    const float LoadingRingSize = 96f;
+    const float LoadingRingWidth = 8f;
+    const float LoadingArcSweep = 100f;
+    const double LoadingTurnsPerSecond = 1.1;
+    static readonly Color LoadingAccent = Color.FromArgb(0x22, 0xE5, 0xE8);
+    static readonly Color LoadingTrack = Color.FromArgb(60, 255, 255, 255);
+    readonly Stopwatch _sinceLoading = Stopwatch.StartNew();
+
     readonly Dictionary<(string Family, bool Bold, bool Italic), (FontFamily Family, FontStyle Style)> _fonts = [];
 
+    /// <param name="loading">Sensors are still starting up. A theme that shows readings is covered by a spinner until they arrive.</param>
     public byte[] Render(IBackground background, IReadOnlyList<ElementSpec> elements, Stats stats, DateTime now, float dim = 0,
-        IReadOnlyList<Alert>? alerts = null, NowPlaying? media = null, WeatherReport? weather = null)
+        IReadOnlyList<Alert>? alerts = null, NowPlaying? media = null, WeatherReport? weather = null, bool loading = false)
     {
         using var g = Graphics.FromImage(_canvas);
         g.SmoothingMode = SmoothingMode.AntiAlias;
@@ -90,6 +104,7 @@ public sealed partial class ThemeRenderer : IDisposable
             g.FillRectangle(scrim, 0, 0, _canvas.Width, _canvas.Height);
         }
         var scale = Math.Min(_canvas.Width, _canvas.Height) / (float)ScreenSize;
+        _scale = scale;
         g.TranslateTransform(_canvas.Width / 2f, _canvas.Height / 2f);
         g.ScaleTransform(scale, scale);
         g.TranslateTransform(-ScreenSize / 2f, -ScreenSize / 2f);
@@ -114,8 +129,44 @@ public sealed partial class ThemeRenderer : IDisposable
             _captures.Remove(key);
         }
         DrawFade(g);
+        if (loading && UsesSensors(elements)) DrawLoading(g, scale);
         if (alerts is { Count: > 0 }) DrawAlert(g, alerts, now, scale);
         return JpegFrame.Encode(_canvas, _quality);
+    }
+
+    /// <summary>True when the theme shows a reading from the PC's sensors, as text, a gauge or a bar.</summary>
+    public static bool UsesSensors(IReadOnlyList<ElementSpec> elements) =>
+        elements.Any(element => !element.Hidden && element.Kind is ElementKind.Metric or ElementKind.Gauge or ElementKind.Bar
+            && Stats.IsSensor(element.Metric));
+
+    /// <summary>
+    /// One spinner covers the whole theme while sensors start, so a screen of dashes never reads as broken.
+    /// It turns with a stopwatch, not the clock, so it spins evenly between frames.
+    /// </summary>
+    void DrawLoading(Graphics g, float scale)
+    {
+        IsAnimating = true;
+        g.ResetTransform();
+        using (var scrim = new SolidBrush(Color.FromArgb(LoadingScrimAlpha, Color.Black)))
+            g.FillRectangle(scrim, 0, 0, _canvas.Width, _canvas.Height);
+        g.TranslateTransform(_canvas.Width / 2f, _canvas.Height / 2f);
+        g.ScaleTransform(scale, scale);
+        g.TranslateTransform(-ScreenSize / 2f, -ScreenSize / 2f);
+
+        var center = ScreenSize / 2f;
+        var ring = new RectangleF(center - LoadingRingSize / 2, center - 30 - LoadingRingSize / 2, LoadingRingSize, LoadingRingSize);
+        using (var track = new Pen(LoadingTrack, LoadingRingWidth))
+            g.DrawEllipse(track, ring);
+        var start = (float)(_sinceLoading.Elapsed.TotalSeconds * LoadingTurnsPerSecond * 360 % 360);
+        using (var arc = new Pen(LoadingAccent, LoadingRingWidth) { StartCap = LineCap.Round, EndCap = LineCap.Round })
+            g.DrawArc(arc, ring, start, LoadingArcSweep);
+
+        using var family = OpenFamily("Segoe UI");
+        using var centered = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+        using var path = new GraphicsPath();
+        path.AddString("Reading sensors", family, (int)FontStyle.Regular, 24, new PointF(center, ring.Bottom + 44), centered);
+        using var brush = new SolidBrush(Color.FromArgb(200, 200, 206));
+        g.FillPath(brush, path);
     }
 
     /// <summary>The next frames dissolve from what is on the screen now to whatever is drawn next.</summary>

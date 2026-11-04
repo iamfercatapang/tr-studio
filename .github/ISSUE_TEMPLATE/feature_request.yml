@@ -1,0 +1,21 @@
+name: Suggest an idea
+description: Something TR Studio could do, or do better.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like?
+      description: Describe what you'd like TR Studio to do.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why would it help?
+      description: What are you trying to do that's hard today?
+  - type: input
+    id: model
+    attributes:
+      label: Cooler model
+      placeholder: Core Vision 360

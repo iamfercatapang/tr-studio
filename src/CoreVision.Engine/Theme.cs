@@ -18,6 +18,8 @@ public enum TextAlign { Left, Center, Right }
 public enum ShapeKind { Line, Arc, Rectangle, Ellipse, Triangle, Diamond, Hexagon, Star }
 public enum LineStyle { Solid, Dashed, Dotted }
 public enum CaptureSource { Area, Screen, Window }
+/// <summary>How a Music widget shows the song's progress. Around Art and Screen Edge fit any screen shape.</summary>
+public enum ProgressStyle { Bar, Line, Segments, AroundArt, ScreenEdge }
 
 public sealed record BackgroundSpec(BackgroundKind Kind = BackgroundKind.Color, string Color = "#000000", string? Path = null);
 
@@ -88,6 +90,7 @@ public sealed record ElementSpec(ElementKind Kind, float X, float Y, float Size)
     public bool ShowTitle { get; init; } = true;
     public bool ShowArtist { get; init; } = true;
     public bool ShowProgress { get; init; } = true;
+    public ProgressStyle ProgressStyle { get; init; }
     public string SecondaryColor { get; init; } = "#98989D";
 
     // Weather: X and Y are the center and Size is the width. Color is the temperature and forecast, SecondaryColor the rest.
@@ -271,9 +274,12 @@ public sealed record Theme(string Name, BackgroundSpec Background, IReadOnlyList
         ]),
         new("Now Playing", new BackgroundSpec(),
         [
-            Ring(Metric.MusicProgress, 452, 0, 100, HaloCyan, HaloPurple, 14) with { StartAngle = 270, Sweep = 360, Dot = false },
             new ElementSpec(ElementKind.Clock, 240, 70, 26) { Align = TextAlign.Center, Color = Secondary },
-            new ElementSpec(ElementKind.Music, 240, 252, 300) { Bold = true, ShowProgress = false, CornerRadius = 20 },
+            // Screen Edge follows the screen's own outline, so this fits round, square and wide screens.
+            new ElementSpec(ElementKind.Music, 240, 256, 300)
+            {
+                Bold = true, CornerRadius = 20, ProgressStyle = ProgressStyle.ScreenEdge, EndColor = HaloCyan, TrackColor = "#1C1C22",
+            },
         ]),
         new("Weather", new BackgroundSpec(),
         [

@@ -1,0 +1,54 @@
+name: Report a problem
+description: Something in TR Studio doesn't work as it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. The more of the form you fill in, the faster it can be fixed.
+        In TR Studio, **Settings → Help & Feedback → Report a Problem** fills in the versions for you.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What went wrong, and what did you see on the cooler screen or in the app?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to make it happen
+      description: What did you do just before it happened? Numbered steps help most.
+      placeholder: |
+        1. Open the Themes page
+        2. Turn on the Theme Playlist
+        3. ...
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+  - type: input
+    id: version
+    attributes:
+      label: TR Studio version
+      description: In Settings → Updates.
+      placeholder: "1.5.0"
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Cooler model
+      placeholder: Core Vision 360
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: Windows 11 23H2
+  - type: textarea
+    id: log
+    attributes:
+      label: Log file
+      description: |
+        In TR Studio, Settings → Help & Feedback → Open Log Folder, then drag `engine.log` here.
+        The log can contain your Windows user name and folder paths; remove them first if you'd rather not share them.

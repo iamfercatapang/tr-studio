@@ -38,6 +38,12 @@ public sealed class ThemePlayer : IDisposable
     /// <summary>The latest forecast, read on every frame. Null shows dashes in Weather widgets.</summary>
     public Func<WeatherReport?> Weather { get; init; } = () => null;
 
+    /// <summary>True while sensors are still starting, read on every frame. The screen shows a spinner meanwhile.</summary>
+    public Func<bool> Loading { get; init; } = () => false;
+
+    /// <summary>A frame that failed to draw is a bug. It's logged either way; this also passes it on for a crash report.</summary>
+    public Action<Exception> ReportError { get; init; } = _ => { };
+
     public event Action<byte[]>? FrameRendered;
     public Theme Theme => _theme;
     public long FramesRendered => Interlocked.Read(ref _framesRendered);
@@ -99,7 +105,7 @@ public sealed class ThemePlayer : IDisposable
         while (!_stopping)
         {
             var screen = _screen;
-            using var renderer = new ThemeRenderer(screen.Width, screen.Height, screen.JpegQuality);
+            using var renderer = new ThemeRenderer(screen.Width, screen.Height, screen.JpegQuality) { RoundScreen = screen.Round };
             PlayOnScreen(renderer, screen);
         }
     }
@@ -124,7 +130,7 @@ public sealed class ThemePlayer : IDisposable
                     var weather = Weather();
                     if (media != null) stats = stats with { MusicProgress = media.ProgressAt(DateTime.UtcNow) };
                     if (weather != null) stats = stats with { OutdoorTemp = weather.TemperatureAt(DateTime.UtcNow) };
-                    var frame = renderer.Render(background, theme.Elements, stats, DateTime.Now, theme.Dim, _alerts, media, weather);
+                    var frame = renderer.Render(background, theme.Elements, stats, DateTime.Now, theme.Dim, _alerts, media, weather, Loading());
                     var rotation = _rotation;
                     _submit(rotation == 0 ? frame : renderer.EncodeRotated(rotation));
                     FrameRendered?.Invoke(frame);
@@ -133,6 +139,7 @@ public sealed class ThemePlayer : IDisposable
                 catch (Exception e) when (e is InvalidOperationException or ArgumentException or OutOfMemoryException)
                 {
                     _log($"Frame failed: {e.Message}");
+                    ReportError(e);
                 }
                 // Extra frames for gauges or live edits must not speed up a GIF.
                 if (sinceAdvance.Elapsed >= background.FrameDelay)

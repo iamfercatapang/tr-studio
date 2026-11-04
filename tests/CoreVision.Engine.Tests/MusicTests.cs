@@ -123,8 +123,8 @@ public class MusicTests
     {
         var theme = Theme.BuiltIns.Single(t => t.Name == "Now Playing");
         var widget = theme.Elements.Single(e => e.Kind == ElementKind.Music);
-        var ring = theme.Elements.Single(e => e.Kind == ElementKind.Gauge);
-        var inside = ring.Size / 2 - ring.Thickness;
+        Assert.Equal(ProgressStyle.ScreenEdge, widget.ProgressStyle); // fits square and wide screens too
+        const float inside = 240 - 18; // inside the progress that runs around the screen's edge
         var box = ThemeRenderer.LayoutMusic(widget).Bounds;
         foreach (var (x, y) in new[] { (box.Left, box.Top), (box.Right, box.Top), (box.Left, box.Bottom), (box.Right, box.Bottom) })
             Assert.True(Math.Sqrt((x - 240) * (x - 240) + (y - 240) * (y - 240)) < inside, $"{x},{y} crosses the ring");

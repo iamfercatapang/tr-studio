@@ -143,7 +143,7 @@ function state() {
     .filter((entry) => !removed.has(entry.path));
   theme = { ...theme };
   if (themes[0]) themes[0].thumb = render();
-  emit({ type: 'state', themes, current: theme, currentPath: window.mock.path, rotation: window.mock.rotation ?? 0, startup: window.mock.startup ?? false, removedDefaults: removed.size, playlist: window.mock.playlist ?? { enabled: false, paths: [], seconds: 30 }, alertSettings: window.mock.alertSettings, alerts: window.mock.alerts ?? [], screen: { width: screenWidth, height: screenHeight, round: screenWidth === 480, model: screenWidth === 480 ? 'Core Vision 360' : `${screenWidth}×${screenHeight} Screen` }, fonts: ['Arial', 'Consolas', 'Georgia', 'Impact', 'Segoe UI'], status: { state: 'Connected', text: 'Screen connected' } });
+  emit({ type: 'state', themes, current: theme, currentPath: window.mock.path, rotation: window.mock.rotation ?? 0, startup: window.mock.startup ?? false, removedDefaults: removed.size, playlist: window.mock.playlist ?? { enabled: false, paths: [], seconds: 30 }, alertSettings: window.mock.alertSettings, alerts: window.mock.alerts ?? [], roundOverride: window.mock.roundScreen ?? null, crashReports: window.mock.crashReports ?? null, crashReportsAvailable: true, crashedLastTime: window.mock.crashedLastTime ?? false, screen: { width: screenWidth, height: screenHeight, round: window.mock.roundScreen ?? screenWidth === 480, model: screenWidth === 480 ? 'Core Vision 360' : `${screenWidth}×${screenHeight} Screen` }, fonts: ['Arial', 'Consolas', 'Georgia', 'Impact', 'Segoe UI'], status: { state: 'Connected', text: 'Screen connected' } });
 }
 
 window.mock = { sent: [], path: null, saved, emit };
@@ -222,6 +222,9 @@ window.chrome.webview = {
     }
     if (message.type === 'rotate') window.mock.rotation = message.degrees;
     if (message.type === 'startup') { window.mock.startup = message.enabled; state(); }
+    if (message.type === 'roundScreen') { window.mock.roundScreen = message.round; state(); }
+    if (message.type === 'crashReports') { window.mock.crashReports = message.enabled; state(); }
+    if (['openLogs', 'reportProblem', 'askQuestion'].includes(message.type)) emit({ type: 'notice', message: { openLogs: 'Log folder opened', reportProblem: 'Bug report form opened in the browser', askQuestion: 'Discussions opened in the browser' }[message.type] });
     if (message.type === 'pickColor') setTimeout(() => emit({ type: 'pickedColor', color: '#12AB34' }), 50);
     if (message.type === 'delete') {
       if (saved.has(message.path)) saved.delete(message.path); else removed.add(message.path);

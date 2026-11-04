@@ -24,6 +24,17 @@ public sealed partial class ThemeRenderer
     const float PauseBadgeShare = 0.28f;
     const int PauseBadgeAlpha = 150;
     const int MaxFittedTexts = 64;
+    const float LineShare = 0.4f;
+    const float MinLineWidth = 2f;
+    const float KnobShare = 1.1f;
+    const int SegmentCount = 12;
+    const float SegmentGapShare = 0.25f;
+    const float SegmentHeightShare = 1.3f;
+    const float ArtRingGapShare = 0.025f;
+    const float EdgeThickness = 12f;
+    const float EdgeInset = 6f;
+    const float EdgeCornerRadius = 28f;
+    const int OutlineCornerSteps = 24;
     const string Ellipsis = "…";
 
     byte[]? _artBytes;
@@ -50,11 +61,18 @@ public sealed partial class ThemeRenderer
         var timeSize = width * TimeShare;
         var bar = RectangleF.Empty;
         var timeY = y;
-        if (element.ShowProgress)
+        if (element.ShowProgress && HasBarRow(element))
         {
             if (y > 0) y += width * BarGapShare;
             bar = new RectangleF(-width * BarWidthShare / 2, y, width * BarWidthShare, barHeight);
             y += barHeight + width * TimeGapShare;
+            timeY = y;
+            y += timeSize * LineSpacing;
+        }
+        else if (element.ShowProgress)
+        {
+            // The progress runs around the art or the screen, so only the times need a row.
+            if (y > 0) y += width * BarGapShare;
             timeY = y;
             y += timeSize * LineSpacing;
         }
@@ -112,30 +130,191 @@ public sealed partial class ThemeRenderer
         g.FillRectangle(white, center.X + barWidth * 0.6f, center.Y - barHeight / 2, barWidth, barHeight);
     }
 
+    /// <summary>Around Art needs the art; without it the widget falls back to a bar.</summary>
+    public static ProgressStyle EffectiveProgressStyle(ElementSpec element) =>
+        element.ProgressStyle == ProgressStyle.AroundArt && !element.ShowArt ? ProgressStyle.Bar : element.ProgressStyle;
+
+    static bool HasBarRow(ElementSpec element) => EffectiveProgressStyle(element) is ProgressStyle.Bar or ProgressStyle.Line or ProgressStyle.Segments;
+
     void DrawProgress(Graphics g, ElementSpec element, MusicLayout layout, NowPlaying media, TimeSpan duration, FontFamily family, FontStyle style)
     {
-        var bar = layout.Bar;
-        var radius = bar.Height / 2;
-        using (var trackShape = RoundedBox(bar, radius))
-        using (var track = new SolidBrush(ParseColor(element.TrackColor, Color.FromArgb(42, 42, 46))))
-            g.FillPath(track, trackShape);
-
         var position = media.PositionAt(DateTime.UtcNow);
-        if (position is { } elapsed)
+        var share = position is { } elapsed ? (float)Math.Clamp(elapsed / duration, 0, 1) : 0f;
+        var track = ParseColor(element.TrackColor, Color.FromArgb(42, 42, 46));
+        var fill = ParseColor(element.EndColor, Color.Cyan);
+        var color = ParseColor(element.SecondaryColor, Color.Gray);
+        var shown = position is { } at ? NowPlaying.Clock(at) : NoValue;
+
+        var progressStyle = EffectiveProgressStyle(element);
+        switch (progressStyle)
         {
-            var filled = (float)(elapsed / duration) * bar.Width;
-            if (filled > 0.5f)
-            {
-                using var fillShape = RoundedBox(bar with { Width = filled }, Math.Min(radius, filled / 2));
-                using var fill = new SolidBrush(ParseColor(element.EndColor, Color.Cyan));
-                g.FillPath(fill, fillShape);
-            }
+            case ProgressStyle.Line: DrawLineProgress(g, layout.Bar, share, track, fill); break;
+            case ProgressStyle.Segments: DrawSegments(g, layout.Bar, share, track, fill); break;
+            case ProgressStyle.AroundArt: DrawArtRing(g, element, layout, share, track, fill); break;
+            case ProgressStyle.ScreenEdge: DrawScreenEdge(g, share, track, fill); break;
+            default: DrawBar(g, layout.Bar, share, track, fill); break;
         }
 
-        var color = ParseColor(element.SecondaryColor, Color.Gray);
-        DrawLine(g, position is { } shown ? NowPlaying.Clock(shown) : NoValue, family, style, layout.TimeSize, bar.Left, layout.TimeY, StringAlignment.Near, color);
-        DrawLine(g, NowPlaying.Clock(duration), family, style, layout.TimeSize, bar.Right, layout.TimeY, StringAlignment.Far, color);
+        if (HasBarRow(element))
+        {
+            DrawLine(g, shown, family, style, layout.TimeSize, layout.Bar.Left, layout.TimeY, StringAlignment.Near, color);
+            DrawLine(g, NowPlaying.Clock(duration), family, style, layout.TimeSize, layout.Bar.Right, layout.TimeY, StringAlignment.Far, color);
+        }
+        else DrawLine(g, $"{shown} / {NowPlaying.Clock(duration)}", family, style, layout.TimeSize, element.X, layout.TimeY, StringAlignment.Center, color);
     }
+
+    static void DrawBar(Graphics g, RectangleF bar, float share, Color trackColor, Color fillColor)
+    {
+        var radius = bar.Height / 2;
+        using (var trackShape = RoundedBox(bar, radius))
+        using (var track = new SolidBrush(trackColor))
+            g.FillPath(track, trackShape);
+        var filled = share * bar.Width;
+        if (filled <= 0.5f) return;
+        using var fillShape = RoundedBox(bar with { Width = filled }, Math.Min(radius, filled / 2));
+        using var fill = new SolidBrush(fillColor);
+        g.FillPath(fill, fillShape);
+    }
+
+    /// <summary>A hairline with a knob at the playhead, like a media player's scrubber.</summary>
+    static void DrawLineProgress(Graphics g, RectangleF bar, float share, Color trackColor, Color fillColor)
+    {
+        var y = bar.Top + bar.Height / 2;
+        var thickness = Math.Max(bar.Height * LineShare, MinLineWidth);
+        var playhead = bar.Left + share * bar.Width;
+        using (var track = new Pen(trackColor, thickness) { StartCap = LineCap.Round, EndCap = LineCap.Round })
+            g.DrawLine(track, bar.Left, y, bar.Right, y);
+        using (var fill = new Pen(fillColor, thickness) { StartCap = LineCap.Round, EndCap = LineCap.Round })
+            if (playhead > bar.Left + 0.5f) g.DrawLine(fill, bar.Left, y, playhead, y);
+        var knob = bar.Height * KnobShare;
+        using var brush = new SolidBrush(fillColor);
+        g.FillEllipse(brush, playhead - knob, y - knob, knob * 2, knob * 2);
+    }
+
+    /// <summary>Short pills that light up in turn. The one being played fades in as the song moves through it.</summary>
+    static void DrawSegments(Graphics g, RectangleF bar, float share, Color trackColor, Color fillColor)
+    {
+        var height = bar.Height * SegmentHeightShare;
+        var top = bar.Top + (bar.Height - height) / 2;
+        var step = bar.Width / SegmentCount;
+        var width = step * (1 - SegmentGapShare);
+        var lit = share * SegmentCount;
+        using var track = new SolidBrush(trackColor);
+        for (var i = 0; i < SegmentCount; i++)
+        {
+            var box = new RectangleF(bar.Left + i * step + (step - width) / 2, top, width, height);
+            using var shape = RoundedBox(box, Math.Min(height, width) / 2);
+            g.FillPath(track, shape);
+            var amount = Math.Clamp(lit - i, 0, 1);
+            if (amount <= 0) continue;
+            using var fill = new SolidBrush(Color.FromArgb((int)(fillColor.A * amount), fillColor));
+            g.FillPath(fill, shape);
+        }
+    }
+
+    /// <summary>Traces the album art's outline, so it's a circle around round art and a rounded square otherwise.</summary>
+    static void DrawArtRing(Graphics g, ElementSpec element, MusicLayout layout, float share, Color trackColor, Color fillColor)
+    {
+        var width = layout.Bounds.Width;
+        var thickness = Math.Max(width * BarShare, MinBarHeight);
+        var gap = width * ArtRingGapShare + thickness / 2;
+        var box = RectangleF.Inflate(layout.Art, gap, gap);
+        var radius = Math.Clamp(element.CornerRadius, 0, layout.Art.Width / 2);
+        var outline = Outline(box, radius >= layout.Art.Width / 2 ? box.Width / 2 : radius + gap);
+        DrawAlong(g, outline, share, thickness, trackColor, fillColor);
+    }
+
+    /// <summary>Runs around the screen's own border: a circle on round screens, a rounded rectangle on the rest.</summary>
+    void DrawScreenEdge(Graphics g, float share, Color trackColor, Color fillColor)
+    {
+        var inset = EdgeInset + EdgeThickness / 2;
+        RectangleF box;
+        float radius;
+        if (RoundScreen)
+        {
+            box = new RectangleF(inset, inset, ScreenSize - 2 * inset, ScreenSize - 2 * inset);
+            radius = box.Width / 2;
+        }
+        else
+        {
+            // Wide screens show more than the 480 unit square, so the border is wherever the canvas ends.
+            var width = _canvas.Width / _scale;
+            var height = _canvas.Height / _scale;
+            box = new RectangleF(ScreenSize / 2f - width / 2 + inset, ScreenSize / 2f - height / 2 + inset, width - 2 * inset, height - 2 * inset);
+            radius = EdgeCornerRadius;
+        }
+        DrawAlong(g, Outline(box, radius), share, EdgeThickness, trackColor, fillColor);
+    }
+
+    /// <summary>
+    /// Points around a rounded box, clockwise from the middle of the top edge, so progress starts at twelve o'clock.
+    /// A radius of half the side makes a circle.
+    /// </summary>
+    public static PointF[] Outline(RectangleF box, float radius)
+    {
+        radius = Math.Clamp(radius, 0, Math.Min(box.Width, box.Height) / 2);
+        var points = new List<PointF> { new(box.Left + box.Width / 2, box.Top) };
+        void Corner(float cx, float cy, float from)
+        {
+            for (var step = 0; step <= OutlineCornerSteps; step++)
+            {
+                var angle = (from + 90f * step / OutlineCornerSteps) * MathF.PI / 180;
+                points.Add(new PointF(cx + radius * MathF.Cos(angle), cy + radius * MathF.Sin(angle)));
+            }
+        }
+        if (radius <= 0)
+        {
+            points.AddRange([new(box.Right, box.Top), new(box.Right, box.Bottom), new(box.Left, box.Bottom), new(box.Left, box.Top)]);
+        }
+        else
+        {
+            Corner(box.Right - radius, box.Top + radius, 270);
+            Corner(box.Right - radius, box.Bottom - radius, 0);
+            Corner(box.Left + radius, box.Bottom - radius, 90);
+            Corner(box.Left + radius, box.Top + radius, 180);
+        }
+        points.Add(points[0]);
+        return [.. points];
+    }
+
+    /// <summary>The whole outline in the track color, then the played share of it from the start.</summary>
+    static void DrawAlong(Graphics g, PointF[] outline, float share, float thickness, Color trackColor, Color fillColor)
+    {
+        using (var track = new Pen(trackColor, thickness) { LineJoin = LineJoin.Round })
+            g.DrawLines(track, outline);
+        var played = PartOf(outline, share);
+        if (played.Length < 2) return;
+        using var fill = new Pen(fillColor, thickness) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
+        g.DrawLines(fill, played);
+    }
+
+    /// <summary>The start of a path, up to a share of its length.</summary>
+    public static PointF[] PartOf(PointF[] path, float share)
+    {
+        if (share <= 0 || path.Length < 2) return [];
+        var lengths = new float[path.Length - 1];
+        for (var i = 0; i < lengths.Length; i++) lengths[i] = Distance(path[i], path[i + 1]);
+        var wanted = lengths.Sum() * Math.Min(share, 1);
+        var part = new List<PointF> { path[0] };
+        for (var i = 0; i < lengths.Length; i++)
+        {
+            if (wanted >= lengths[i])
+            {
+                part.Add(path[i + 1]);
+                wanted -= lengths[i];
+                continue;
+            }
+            if (wanted > 0 && lengths[i] > 0)
+            {
+                var t = wanted / lengths[i];
+                part.Add(new PointF(path[i].X + (path[i + 1].X - path[i].X) * t, path[i].Y + (path[i + 1].Y - path[i].Y) * t));
+            }
+            break;
+        }
+        return [.. part];
+    }
+
+    static float Distance(PointF a, PointF b) => MathF.Sqrt((a.X - b.X) * (a.X - b.X) + (a.Y - b.Y) * (a.Y - b.Y));
 
     /// <summary>Long names end in an ellipsis instead of running past the widget or off the round screen.</summary>
     void DrawFitted(Graphics g, string text, FontFamily family, FontStyle style, float size, float centerX, float y, float maxWidth, Color color)

@@ -38,7 +38,7 @@ TR Studio comes with built-in themes, including Halo, Halo Duo Split, Twin Arc, 
 
 ### Theme Playlist
 
-Pick 2 or more themes, as many as you have, and the cooler cycles through them in the order you set, every 5 seconds to 10 minutes, with a crossfade between each one. The playlist pauses while you're in the Editor.
+Pick 2 or more themes, as many as you have, and the cooler cycles through them in the order you set, every 5 seconds to 10 minutes, with a crossfade between each one. Add Themes opens a picker with each theme's picture, and the + on any theme card adds it in place. The playlist pauses while you're in the Editor.
 
 ### Editor
 
@@ -128,6 +128,18 @@ A few internal names, like `CoreVision.App.exe`, come from the project's working
 [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) reads the sensors, and [FFmpeg](https://ffmpeg.org/) decodes video.
 
 The interface uses the GothamSSm font when it's installed, and Segoe UI otherwise. The font isn't included.
+
+## Getting help
+
+Found a bug? In TR Studio, open **Settings → Help & Feedback → Report a Problem**. It opens a [bug report form](https://github.com/iamfercatapang/tr-studio/issues/new/choose) with your versions filled in. **Open Log Folder** shows `engine.log`, which you can attach. Questions and ideas go in [Discussions](https://github.com/iamfercatapang/tr-studio/discussions).
+
+## Privacy
+
+TR Studio uses the internet for three things only:
+
+- **Weather**, if you add a Weather widget: only your chosen city's coordinates go to [Open-Meteo](https://open-meteo.com/).
+- **Update check**: asks GitHub for the latest release and sends nothing about your PC. You can turn it off in Settings.
+- **Crash reports**, only if you say yes when asked (off until then, and switchable in Settings): when TR Studio crashes, it sends the error, the app and Windows versions, the cooler model and the last lines of its log to [Sentry](https://sentry.io/). Your user name, PC name and user folders are taken out first.
 
 ## License
 

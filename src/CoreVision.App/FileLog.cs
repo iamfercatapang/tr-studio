@@ -14,6 +14,28 @@ sealed class FileLog
         _path = Path.Combine(folder, "engine.log");
     }
 
+    public string Folder => Path.GetDirectoryName(_path)!;
+
+    /// <summary>The last lines of the log, oldest first. Empty if it can't be read.</summary>
+    public IReadOnlyList<string> Tail(int count)
+    {
+        lock (_gate)
+        {
+            try { return File.Exists(_path) ? File.ReadLines(_path).TakeLast(count).ToList() : []; }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return []; }
+        }
+    }
+
+    /// <summary>Read before this launch is written, so it describes the session before.</summary>
+    public bool LastSessionCrashed()
+    {
+        lock (_gate)
+        {
+            try { return File.Exists(_path) && CoreVision.Engine.CrashLog.LastSessionCrashed(File.ReadLines(_path)); }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return false; }
+        }
+    }
+
     public void Write(string line)
     {
         lock (_gate)
