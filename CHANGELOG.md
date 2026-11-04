@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.5.0 (Nov 4, 2026)
 
 - **A spinner on the cooler while sensors start.** Right after TR Studio starts, a theme that shows readings is covered by a spinning ring and "Reading sensors" until they arrive, instead of a screen of dashes. Themes with only a clock or pictures show straight away.
 - **Easier Theme Playlist.** Add Themes opens a picker with every theme's picture: click the ones you want, in the order they should play, then add them all at once. Each theme card also has a badge: + adds it to the playlist, and its number removes it.
