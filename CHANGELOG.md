@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.6.0 (Nov 7, 2026)
 
 - **Select several layers in the Editor and move, resize or rotate them together.** Ctrl-click or Shift-click layers on the screen or in Layers, or drag a box across empty screen. A box appears around the selection: drag a corner to resize everything in it (Alt resizes from the middle), or the round handle above it to rotate (Shift snaps to 15°). A single layer gets the same box.
 - **Groups.** Group the selection with Ctrl+G, the Group button, or right-click → Group. A group is saved with the theme, shows as a folder in Layers that you can collapse, and moves as one: clicking any member on the screen picks the whole group, and double-clicking picks just that layer. Ctrl+Shift+G or right-click → Ungroup splits it again. Drag a layer between a group's members in Layers to add it, or out of the group to take it out.
