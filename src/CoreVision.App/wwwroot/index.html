@@ -17,8 +17,11 @@
   </header>
   <aside class="sidebar">
     <div class="brand">
-      <h1>TR Studio</h1>
-      <p id="modelName"></p>
+      <img class="brand-logo" src="logo.svg" alt="">
+      <div>
+        <h1>TR Studio</h1>
+        <p id="modelName"></p>
+      </div>
     </div>
     <nav aria-label="Main">
       <span class="nav-indicator" id="navIndicator"></span>
@@ -102,6 +105,10 @@
         <p class="alerts-intro">When a reading stays past its limit for a few seconds, the cooler screen shows a warning over your theme and Windows shows a notification.</p>
         <div class="alert-rules" id="alertRules"></div>
       </section>
+      <section class="alerts-panel" aria-labelledby="fansTitle">
+        <div class="section-header"><h3 id="fansTitle">Cooler Fans</h3></div>
+        <div class="alert-rules" id="fanRoles"></div>
+      </section>
       <section class="alerts-panel" aria-labelledby="updatesTitle">
         <div class="section-header"><h3 id="updatesTitle">Updates</h3></div>
         <div class="settings-options" id="updateOptions"></div>
@@ -155,6 +162,7 @@
             <div class="guide" id="guide" hidden></div>
             <div class="guide horizontal" id="guideH" hidden></div>
             <div id="handles"></div>
+            <div class="marquee" id="marquee" hidden></div>
           </div>
         </div>
         <aside class="inspector" id="inspector" aria-label="Properties"></aside>
@@ -270,6 +278,7 @@
     <p id="confirmBody"></p>
     <div class="dialog-actions" id="confirmActions"></div>
   </dialog>
+  <div class="context-menu" id="layerMenu" role="menu" aria-label="Layer" hidden></div>
   <div class="toast" id="toast" role="alert" hidden></div>
   <script type="module" src="app.js"></script>
 </body>

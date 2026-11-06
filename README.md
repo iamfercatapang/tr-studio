@@ -1,3 +1,5 @@
+<img src="docs/logo.svg" alt="" width="96">
+
 # TR Studio
 
 [![Latest release](https://img.shields.io/github/v/release/iamfercatapang/tr-studio)](https://github.com/iamfercatapang/tr-studio/releases/latest) [![Downloads](https://img.shields.io/github/downloads/iamfercatapang/tr-studio/total)](https://github.com/iamfercatapang/tr-studio/releases)

@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- **Select several layers in the Editor and move, resize or rotate them together.** Ctrl-click or Shift-click layers on the screen or in Layers, or drag a box across empty screen. A box appears around the selection: drag a corner to resize everything in it (Alt resizes from the middle), or the round handle above it to rotate (Shift snaps to 15°). A single layer gets the same box.
+- **Groups.** Group the selection with Ctrl+G, the Group button, or right-click → Group. A group is saved with the theme, shows as a folder in Layers that you can collapse, and moves as one: clicking any member on the screen picks the whole group, and double-clicking picks just that layer. Ctrl+Shift+G or right-click → Ungroup splits it again. Drag a layer between a group's members in Layers to add it, or out of the group to take it out.
+- **Every layer can rotate**: text, stats, clocks, dates, gauges, Weather, Music and Picture-in-Picture now have a Rotation slider, as bars and shapes already did.
+- **Pump and fan speeds on more motherboards.** TR Studio used to look for one ASUS board's fan names, so on other boards (such as MSI's X870E boards) the AIO Pump, CPU Fan and Case Fan showed a dash. It now recognizes the names boards use, like "Pump Fan", "AIO Pump", "CPU Fan" and "System Fan #1", and checks every sensor chip on the board. If it still picks the wrong header, the new **Cooler Fans** section in Settings lists every fan header with its live speed so you can choose. The motherboard temperature is found on more boards too.
+- **A new TR logo** for the app, tray, taskbar, installer and README, in the app's cyan-to-magenta gradient.
+- **View Release Notes** in Settings → Updates opens the new version's release page on GitHub, in place of the notes text.
+- Settings is quieter: the crash report details under the switch and the Cooler Fans intro are gone.
+
 ## 1.5.0 (Nov 4, 2026)
 
 - **A spinner on the cooler while sensors start.** Right after TR Studio starts, a theme that shows readings is covered by a spinning ring and "Reading sensors" until they arrive, instead of a screen of dashes. Themes with only a clock or pictures show straight away.

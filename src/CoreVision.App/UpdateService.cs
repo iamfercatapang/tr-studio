@@ -69,7 +69,6 @@ sealed class UpdateService : IDisposable
                 ["automatic"] = _automatic,
                 ["state"] = _state,
                 ["version"] = _release?.Version.ToString(),
-                ["notes"] = _release?.Notes,
                 ["progress"] = _progress,
                 ["error"] = _error,
                 ["checkedAt"] = _checkedAt?.ToString("o"),

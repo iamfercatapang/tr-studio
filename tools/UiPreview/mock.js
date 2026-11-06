@@ -29,8 +29,22 @@ const removed = new Set();
 
 const song = { title: 'Uncle Dags - Viva La Raza (feat. THUGSTA) [Official Music Video]', artist: 'Uncle Dags', playing: true, position: 83, duration: 272, art: null, canPlayPause: true, canNext: true, canPrevious: false };
 
+/* Like ThemeRenderer: bars and shapes turn themselves; the rest turn around ThemeRenderer.Pivot. */
 function draw(item) {
   if (item.hidden) return;
+  const degrees = item.rotation ?? 0;
+  if (degrees % 360 === 0 || item.kind === 'Bar' || item.kind === 'Shape') { drawUpright(item); return; }
+  const text = ['Metric', 'Text', 'Clock', 'Date'].includes(item.kind);
+  const pivotY = text ? item.y + Math.min(300, Math.max(8, item.size)) * 1.35 / 2 : item.y;
+  ctx.save();
+  ctx.translate(item.x, pivotY);
+  ctx.rotate(degrees * Math.PI / 180);
+  ctx.translate(-item.x, -pivotY);
+  drawUpright(item);
+  ctx.restore();
+}
+
+function drawUpright(item) {
   if (item.kind === 'Weather') {
     ctx.fillStyle = '#FFD60A';
     ctx.beginPath(); ctx.arc(item.x - 60, item.y - 50, 26, 0, 7); ctx.fill();
@@ -161,10 +175,10 @@ window.chrome.webview = {
     // Updates: a newer release is waiting. Install counts up the download, then shows the installer starting.
     const update = (fields) => { window.mock.update = { ...window.mock.update, ...fields }; emit({ type: 'update', ...window.mock.update }); };
     if (message.type === 'ready') {
-      window.mock.update = { current: '1.3.0', automatic: true, state: 'available', version: '1.4.0', progress: 0, error: null,
-        notes: '- Picture-in-Picture can show a window or a whole screen.\n- In-app updates.' };
+      window.mock.update = { current: '1.3.0', automatic: true, state: 'available', version: '1.4.0', progress: 0, error: null };
       update({});
     }
+    if (message.type === 'releaseNotes') emit({ type: 'notice', message: `Opens the ${message.version} release on GitHub` });
     if (message.type === 'autoUpdate') update({ automatic: message.enabled });
     if (message.type === 'checkUpdate') {
       update({ state: 'checking' });
@@ -194,6 +208,18 @@ window.chrome.webview = {
         { label: 'Operating System', values: ['Windows 11 Pro 25H2 (Build 26300)'] },
       ] }), 500);
     }
+    // Fan headers named the way MSI boards name them, with speeds that wobble like live ones.
+    const fanHeaders = () => [
+      ['/lpc/nct6687d/0/fan/0', 'CPU Fan', 1180], ['/lpc/nct6687d/0/fan/1', 'Pump Fan', 2650],
+      ['/lpc/nct6687d/0/fan/2', 'System Fan #1', 920], ['/lpc/nct6687d/0/fan/3', 'System Fan #2', 0],
+    ].map(([id, name, rpm]) => ({ id, name, rpm: rpm && Math.round(rpm + (Math.random() - 0.5) * 40) }));
+    const guesses = { pump: '/lpc/nct6687d/0/fan/1', cpuFan: '/lpc/nct6687d/0/fan/0', caseFan: '/lpc/nct6687d/0/fan/2' };
+    const fans = () => {
+      const choice = window.mock.fans ?? {};
+      emit({ type: 'fans', headers: fanHeaders(), ...Object.fromEntries(Object.entries(guesses).map(([key, guess]) => [key, { picked: choice[key] ?? null, guess }])) });
+    };
+    if (message.type === 'listFans') fans();
+    if (message.type === 'setFans') { const { type, ...choice } = message; window.mock.fans = choice; fans(); }
     if (message.type === 'pickRegion') setTimeout(() => emit({ type: 'region', x: 100, y: 100, width: 800, height: 450 }), 50);
     if (message.type === 'listCaptureSources') {
       const thumb = (color, width, height) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}"><rect width="100%" height="100%" fill="${color}"/></svg>`)}`;

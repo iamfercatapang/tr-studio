@@ -32,6 +32,8 @@ public sealed record ElementSpec(ElementKind Kind, float X, float Y, float Size)
     public string Color { get; init; } = "#FFFFFF";
     public TextAlign Align { get; init; } = TextAlign.Left;
     public bool Hidden { get; init; }
+    /// <summary>Layers with the same group name move, resize and turn together in the Editor. Null is no group.</summary>
+    public string? Group { get; init; }
     public bool Bold { get; init; }
     public bool Italic { get; init; }
     public string FontFamily { get; init; } = "Segoe UI";

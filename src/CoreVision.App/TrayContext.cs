@@ -67,7 +67,7 @@ sealed class TrayContext : ApplicationContext
         _updates = new UpdateService(_settings.CheckForUpdates, Log);
         _updates.Changed += () => _ui.Post(_ => SendUpdate(), null);
         _updates.Installing += () => _ui.Post(_ => Quit(), null);
-        _sensors = new SensorMonitor(() => new LibreSensorSource(), log: Log);
+        _sensors = new SensorMonitor(() => new LibreSensorSource(() => _settings.Fans ?? new FanChoice()), log: Log);
         _sensors.Start();
         _link = new ScreenLink(() => ScreenFinder.Open(() => ScreenFinder.OpenFirst(ScreenDevice.All, model => WinUsbDevice.Open(model)),
             WinUsbDevice.PresentUsbPaths), log: Log);
@@ -294,6 +294,36 @@ sealed class TrayContext : ApplicationContext
         ["detail"] = alert.Detail,
     }).ToArray());
 
+    /// <summary>The page asks again every couple of seconds while Settings is open, so the speeds stay live.</summary>
+    public void SendFans()
+    {
+        var stats = _sensors.Current;
+        var choice = _settings.Fans ?? new FanChoice();
+        JsonObject Role(FanRole role, string? picked) => new()
+        {
+            ["picked"] = picked,
+            ["guess"] = FanMatch.Guess(stats.Fans, role)?.Id,
+        };
+        _window?.Post(new JsonObject
+        {
+            ["type"] = "fans",
+            ["headers"] = new JsonArray(stats.Fans.Select(fan => (JsonNode?)new JsonObject
+            {
+                ["id"] = fan.Id, ["name"] = fan.Name, ["rpm"] = fan.Rpm is { } rpm && double.IsFinite(rpm) ? Math.Round(rpm) : null,
+            }).ToArray()),
+            ["pump"] = Role(FanRole.Pump, choice.Pump),
+            ["cpuFan"] = Role(FanRole.CpuFan, choice.CpuFan),
+            ["caseFan"] = Role(FanRole.CaseFan, choice.CaseFan),
+        });
+    }
+
+    public void SetFans(FanChoice choice)
+    {
+        _settings = _settings with { Fans = choice };
+        SaveSettings();
+        SendFans();
+    }
+
     /// <summary>Some screens report the wrong shape. Null goes back to what the screen reports.</summary>
     public void SetRoundScreen(bool? round)
     {
@@ -514,6 +544,12 @@ sealed class TrayContext : ApplicationContext
             $"&version={Uri.EscapeDataString(UpdateService.Current.ToString())}" +
             $"&model={Uri.EscapeDataString(model)}" +
             $"&windows={Uri.EscapeDataString(System.Runtime.InteropServices.RuntimeInformation.OSDescription)}");
+    }
+
+    /// <summary>The release's page on GitHub. Only a real version number goes into the link.</summary>
+    public void ShowReleaseNotes(string? version)
+    {
+        if (Version.TryParse(version, out var parsed)) OpenInBrowser($"{Repository}/releases/tag/v{parsed}");
     }
 
     public void AskQuestion() => OpenInBrowser($"{Repository}/discussions");

@@ -177,6 +177,9 @@ sealed class MainWindow : Form
                 case "reportProblem":
                     _app.ReportProblem();
                     break;
+                case "releaseNotes":
+                    _app.ShowReleaseNotes((string?)message["version"]);
+                    break;
                 case "askQuestion":
                     _app.AskQuestion();
                     break;
@@ -221,6 +224,12 @@ sealed class MainWindow : Form
                     break;
                 case "autoUpdate":
                     _app.SetAutomaticUpdates((bool?)message["enabled"] == true);
+                    break;
+                case "listFans":
+                    _app.SendFans();
+                    break;
+                case "setFans":
+                    _app.SetFans(new FanChoice((string?)message["pump"], (string?)message["cpuFan"], (string?)message["caseFan"]));
                     break;
                 case "listCaptureSources":
                     _ = ListCaptureSourcesAsync();
