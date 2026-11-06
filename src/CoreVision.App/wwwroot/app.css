@@ -268,11 +268,6 @@ nav { position: relative; display: flex; flex-direction: column; gap: 2px; }
 .update-status { max-width: 520px; margin-top: var(--space-3); }
 .update-version { margin: 0 0 var(--space-3); font-size: 0.8125rem; color: var(--text-secondary); }
 .update-version.warning { color: var(--warn); }
-.update-notes {
-  max-height: 160px; overflow-y: auto; margin: 0 0 var(--space-3); padding: var(--space-3);
-  border-radius: var(--radius-sm); background: var(--surface-raised);
-  font-size: 0.75rem; color: var(--text-secondary); white-space: pre-wrap;
-}
 .update-actions { display: flex; gap: var(--space-2); }
 .status {
   margin-top: auto;
@@ -442,6 +437,7 @@ main { min-width: 0; min-height: 0; height: 100%; }
 .weather-results p { margin: 0; font-size: 0.75rem; color: var(--text-secondary); }
 .weather-units { margin: 0; }
 .alerts-intro { margin: var(--space-1) 0 14px; font-size: 0.8125rem; color: var(--text-secondary); }
+.section-header + .alert-rules { margin-top: 14px; }
 .alert-rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
 .alert-rule { display: flex; flex-direction: column; gap: 10px; padding: var(--space-3); border-radius: var(--radius-md); background: var(--surface-raised); transition: box-shadow var(--duration) ease-out; }
 .fan-role-name { display: flex; align-items: center; gap: var(--space-2); font-size: 0.8125rem; font-weight: 500; }

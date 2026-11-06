@@ -901,13 +901,11 @@ function renderStartupOptions() {
   }));
 }
 
-const CRASH_REPORT_DETAILS = 'A report holds the error, where in TR Studio it happened, the app and Windows versions, the cooler model and the last lines of the log. Your user name, PC name and folders are taken out. Nothing is sent without a crash.';
 
 function renderCrashOptions() {
   const children = [];
   if (app.crashReportsAvailable) {
-    children.push(plainToggle('Send Crash Reports', app.crashReports === true, (enabled) => setCrashReports(enabled)),
-      element('p', { className: 'hint', textContent: CRASH_REPORT_DETAILS }));
+    children.push(plainToggle('Send Crash Reports', app.crashReports === true, (enabled) => setCrashReports(enabled)));
   }
   $('crashOptions').replaceChildren(...children);
 }
@@ -984,10 +982,12 @@ function renderUpdate() {
   if (update.version && (update.state === 'available' || update.state === 'failed')) {
     actions.append(element('button', { type: 'button', className: 'primary', textContent: `Install ${update.version}`, onclick: confirmUpdate }));
   }
+  if (offered) {
+    actions.append(element('button', { type: 'button', textContent: 'View Release Notes', title: 'Opens this version’s release page on GitHub', onclick: () => send({ type: 'releaseNotes', version: update.version }) }));
+  }
   const summary = updateSummary(update);
   const children = [element('p', { className: 'update-version', textContent: `TR Studio ${update.current}${summary ? ` · ${summary}` : ''}` })];
   if (update.state === 'failed') children[0].classList.add('warning');
-  if (update.notes && offered) children.push(element('p', { className: 'update-notes', textContent: update.notes }));
   children.push(actions);
   $('updateStatus').replaceChildren(...children);
 }

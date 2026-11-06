@@ -7,6 +7,8 @@
 - **Every layer can rotate**: text, stats, clocks, dates, gauges, Weather, Music and Picture-in-Picture now have a Rotation slider, as bars and shapes already did.
 - **Pump and fan speeds on more motherboards.** TR Studio used to look for one ASUS board's fan names, so on other boards (such as MSI's X870E boards) the AIO Pump, CPU Fan and Case Fan showed a dash. It now recognizes the names boards use, like "Pump Fan", "AIO Pump", "CPU Fan" and "System Fan #1", and checks every sensor chip on the board. If it still picks the wrong header, the new **Cooler Fans** section in Settings lists every fan header with its live speed so you can choose. The motherboard temperature is found on more boards too.
 - **A new TR logo** for the app, tray, taskbar, installer and README, in the app's cyan-to-magenta gradient.
+- **View Release Notes** in Settings → Updates opens the new version's release page on GitHub, in place of the notes text.
+- Settings is quieter: the crash report details under the switch and the Cooler Fans intro are gone.
 
 ## 1.5.0 (Nov 4, 2026)
 

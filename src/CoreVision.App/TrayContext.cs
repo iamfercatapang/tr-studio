@@ -546,6 +546,12 @@ sealed class TrayContext : ApplicationContext
             $"&windows={Uri.EscapeDataString(System.Runtime.InteropServices.RuntimeInformation.OSDescription)}");
     }
 
+    /// <summary>The release's page on GitHub. Only a real version number goes into the link.</summary>
+    public void ShowReleaseNotes(string? version)
+    {
+        if (Version.TryParse(version, out var parsed)) OpenInBrowser($"{Repository}/releases/tag/v{parsed}");
+    }
+
     public void AskQuestion() => OpenInBrowser($"{Repository}/discussions");
 
     public void OpenLogFolder()

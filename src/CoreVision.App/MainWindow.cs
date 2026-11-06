@@ -177,6 +177,9 @@ sealed class MainWindow : Form
                 case "reportProblem":
                     _app.ReportProblem();
                     break;
+                case "releaseNotes":
+                    _app.ShowReleaseNotes((string?)message["version"]);
+                    break;
                 case "askQuestion":
                     _app.AskQuestion();
                     break;

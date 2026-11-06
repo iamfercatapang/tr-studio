@@ -29,8 +29,22 @@ const removed = new Set();
 
 const song = { title: 'Uncle Dags - Viva La Raza (feat. THUGSTA) [Official Music Video]', artist: 'Uncle Dags', playing: true, position: 83, duration: 272, art: null, canPlayPause: true, canNext: true, canPrevious: false };
 
+/* Like ThemeRenderer: bars and shapes turn themselves; the rest turn around ThemeRenderer.Pivot. */
 function draw(item) {
   if (item.hidden) return;
+  const degrees = item.rotation ?? 0;
+  if (degrees % 360 === 0 || item.kind === 'Bar' || item.kind === 'Shape') { drawUpright(item); return; }
+  const text = ['Metric', 'Text', 'Clock', 'Date'].includes(item.kind);
+  const pivotY = text ? item.y + Math.min(300, Math.max(8, item.size)) * 1.35 / 2 : item.y;
+  ctx.save();
+  ctx.translate(item.x, pivotY);
+  ctx.rotate(degrees * Math.PI / 180);
+  ctx.translate(-item.x, -pivotY);
+  drawUpright(item);
+  ctx.restore();
+}
+
+function drawUpright(item) {
   if (item.kind === 'Weather') {
     ctx.fillStyle = '#FFD60A';
     ctx.beginPath(); ctx.arc(item.x - 60, item.y - 50, 26, 0, 7); ctx.fill();
@@ -161,10 +175,10 @@ window.chrome.webview = {
     // Updates: a newer release is waiting. Install counts up the download, then shows the installer starting.
     const update = (fields) => { window.mock.update = { ...window.mock.update, ...fields }; emit({ type: 'update', ...window.mock.update }); };
     if (message.type === 'ready') {
-      window.mock.update = { current: '1.3.0', automatic: true, state: 'available', version: '1.4.0', progress: 0, error: null,
-        notes: '- Picture-in-Picture can show a window or a whole screen.\n- In-app updates.' };
+      window.mock.update = { current: '1.3.0', automatic: true, state: 'available', version: '1.4.0', progress: 0, error: null };
       update({});
     }
+    if (message.type === 'releaseNotes') emit({ type: 'notice', message: `Opens the ${message.version} release on GitHub` });
     if (message.type === 'autoUpdate') update({ automatic: message.enabled });
     if (message.type === 'checkUpdate') {
       update({ state: 'checking' });
