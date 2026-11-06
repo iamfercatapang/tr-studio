@@ -126,6 +126,8 @@ const ICONS = {
   Warning: '<path d="M8 2l6.5 11.5h-13z"/><path d="M8 6.5v3M8 11.5v.01"/>',
   Update: '<path d="M8 2v8M4.5 6.5L8 10l3.5-3.5"/><path d="M2.5 11v1.5a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V11"/>',
   Shown: '<path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/>',
+  Group: '<rect x="1.5" y="1.5" width="8.5" height="8.5" rx="1.5"/><path d="M12.5 6h.5a1.5 1.5 0 0 1 1.5 1.5V13a1.5 1.5 0 0 1-1.5 1.5H7.5A1.5 1.5 0 0 1 6 13v-.5"/>',
+  Chevron: '<path d="M6 3.5L10.5 8 6 12.5"/>',
   Hidden: '<path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z"/><path d="M3 13L13 3"/>',
 };
 const PLAYLIST = { minThemes: 2 };
@@ -142,7 +144,7 @@ const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
 
 const app = {
   themes: [], current: null, currentPath: null, stats: {},
-  draft: null, draftPath: null, savedDraft: '', selected: -1,
+  draft: null, draftPath: null, savedDraft: '', selected: -1, selection: [], collapsed: new Set(),
   rotation: 0, fonts: [], startup: false, removedDefaults: 0, palettes: [],
   screen: { width: SCREEN, height: SCREEN, round: true, model: '' },
   undo: [], redo: [], page: 'metrics',
@@ -269,6 +271,7 @@ function showPage(page) {
   });
   moveIndicator(true);
   send({ type: 'pausePlaylist', paused: page === 'editor' });
+  if (page === 'settings') send({ type: 'listFans' });
   if (page === 'editor') {
     if (!app.draft) openEditor(clone(app.current), app.currentPath);
     fitStage();
@@ -794,7 +797,7 @@ function renderAlertRules() {
 
 /* A warning only works where the PC reports that reading, so each card says what it sees. */
 function renderAlertReadings() {
-  document.querySelectorAll('.alert-rule').forEach((card) => {
+  document.querySelectorAll('#alertRules .alert-rule').forEach((card) => {
     const rule = ALERT_RULES.find((entry) => entry.kind === card.dataset.kind);
     const reading = app.stats[rule.metric];
     card.querySelector('.alert-now').textContent = reading === null || reading === undefined
@@ -804,7 +807,7 @@ function renderAlertReadings() {
 }
 
 function markAlertRules() {
-  document.querySelectorAll('.alert-rule').forEach((card) => {
+  document.querySelectorAll('#alertRules .alert-rule').forEach((card) => {
     card.classList.toggle('alerting', app.alerts.some((alert) => alert.kind === card.dataset.kind));
   });
 }
@@ -816,6 +819,72 @@ function renderAlertBanner() {
     icon('Warning'),
     element('span', {}, element('strong', { textContent: alert.title }), element('span', { textContent: alert.detail })))));
   markAlertRules();
+}
+
+/* Cooler fans. The speeds come again every couple of seconds while Settings is open. */
+const FAN_ROLES = [
+  { key: 'pump', label: 'AIO Pump', iconName: 'Fan' },
+  { key: 'cpuFan', label: 'CPU Fan', iconName: 'Fan' },
+  { key: 'caseFan', label: 'Case Fan', iconName: 'Fan' },
+];
+const NO_FAN = '';
+const AUTOMATIC_FAN = 'auto';
+
+const fanReading = (header) => (header?.rpm == null ? '—' : `${header.rpm.toLocaleString()} RPM`);
+
+function fanOptionText(fans, value, role) {
+  if (value === NO_FAN) return 'None';
+  if (value === AUTOMATIC_FAN) {
+    const guess = fans.headers.find((header) => header.id === fans[role.key].guess);
+    return guess ? `Automatic · ${guess.name} · ${fanReading(guess)}` : 'Automatic · not found';
+  }
+  const header = fans.headers.find((entry) => entry.id === value);
+  return `${header.name} · ${fanReading(header)}`;
+}
+
+function fanSelectValue(fans, role) {
+  const picked = fans[role.key].picked;
+  if (picked === NO_FAN) return NO_FAN;
+  return picked && fans.headers.some((header) => header.id === picked) ? picked : AUTOMATIC_FAN;
+}
+
+function saveFans() {
+  const choice = {};
+  document.querySelectorAll('#fanRoles select').forEach((input) => {
+    choice[input.dataset.role] = input.value === AUTOMATIC_FAN ? null : input.value;
+  });
+  send({ type: 'setFans', ...choice });
+}
+
+function renderFans() {
+  const fans = app.fans;
+  if (!fans) return;
+  const list = $('fanRoles');
+  const ids = fans.headers.map((header) => header.id).join('|');
+  // Same headers as before: only the speeds change, so an open dropdown stays open.
+  if (list.dataset.ids === ids && list.children.length) {
+    list.querySelectorAll('select').forEach((input) => {
+      const role = FAN_ROLES.find((entry) => entry.key === input.dataset.role);
+      [...input.options].forEach((option) => { option.textContent = fanOptionText(fans, option.value, role); });
+    });
+    return;
+  }
+  list.dataset.ids = ids;
+  if (!fans.headers.length) {
+    list.replaceChildren(element('p', { className: 'alerts-intro', textContent: 'This PC doesn’t report any motherboard fan headers yet. Readings can take a few seconds after TR Studio starts.' }));
+    return;
+  }
+  list.replaceChildren(...FAN_ROLES.map((role) => {
+    const values = [AUTOMATIC_FAN, ...fans.headers.map((header) => header.id), NO_FAN];
+    const input = element('select', {}, ...values.map((value) => element('option', { value, textContent: fanOptionText(fans, value, role) })));
+    input.dataset.role = role.key;
+    input.value = fanSelectValue(fans, role);
+    input.setAttribute('aria-label', `${role.label} header`);
+    input.addEventListener('change', saveFans);
+    return element('div', { className: 'alert-rule fan-role' },
+      element('span', { className: 'fan-role-name' }, icon(role.iconName), element('span', { textContent: role.label })),
+      input);
+  }));
 }
 
 function plainToggle(label, value, apply) {
@@ -1033,6 +1102,7 @@ function openEditor(theme, path) {
   app.draftPath = isBuiltIn(path) ? null : path; // a built-in theme saves as a new copy
   app.savedDraft = JSON.stringify(theme);
   app.selected = -1;
+  app.selection = [];
   app.undo = [];
   app.redo = [];
   $('themeName').value = theme.name;
@@ -1076,7 +1146,8 @@ function restore(from, to) {
   if (!from.length) return;
   to.push(JSON.stringify(app.draft));
   app.draft = JSON.parse(from.pop());
-  app.selected = Math.min(app.selected, app.draft.elements.length - 1);
+  app.selection = app.selection.filter((index) => index < app.draft.elements.length);
+  app.selected = app.selection.includes(app.selected) ? app.selected : app.selection[app.selection.length - 1] ?? -1;
   $('themeName').value = app.draft.name;
   renderInspector();
   changed();
@@ -1178,7 +1249,23 @@ function turnedBox(item, width, height) {
   return { left: item.x - w / 2, top: item.y - h / 2, width: w, height: h };
 }
 
-function boundsOf(item) {
+/* Mirrors ThemeRenderer.Pivot: text turns around its anchor halfway down its line, everything else around its center. */
+const TEXT_LINE_SHARE = 1.35;
+const isText = (item) => ['Metric', 'Text', 'Clock', 'Date'].includes(item.kind);
+const textMiddle = (item) => Math.min(300, Math.max(8, item.size)) * TEXT_LINE_SHARE / 2;
+const pivotOf = (item) => (isText(item) ? { x: item.x, y: item.y + textMiddle(item) } : { x: item.x, y: item.y });
+/* Where x and y go so that the layer's pivot lands on a point. */
+const placeAt = (item, point) => (isText(item) ? { x: point.x, y: point.y - textMiddle(item) } : { x: point.x, y: point.y });
+
+/* Clockwise, as the screen's y axis points down. */
+function turnPoint(point, center, degrees) {
+  const angle = degrees * Math.PI / 180;
+  const dx = point.x - center.x;
+  const dy = point.y - center.y;
+  return { x: center.x + dx * Math.cos(angle) - dy * Math.sin(angle), y: center.y + dx * Math.sin(angle) + dy * Math.cos(angle) };
+}
+
+function uprightBounds(item) {
   if (item.kind === 'Gauge') {
     return { left: item.x - item.size / 2, top: item.y - item.size / 2, width: item.size, height: item.size };
   }
@@ -1198,11 +1285,23 @@ function boundsOf(item) {
   const text = textOf(item);
   const smallDegree = item.kind === 'Metric' && text.endsWith(DEGREE); // the engine draws this sign at half size
   const width = Math.max(measure.measureText(smallDegree ? text.slice(0, -1) : text || ' ').width + 8 + (smallDegree ? item.size * 0.28 : 0), 24);
-  const height = item.size * 1.35;
+  const height = item.size * TEXT_LINE_SHARE;
   const left = item.align === 'Right' ? item.x - width : item.align === 'Center' ? item.x - width / 2 : item.x;
   return { left, top: item.y, width, height };
 }
 
+/* The upright box around a layer as drawn. Bars and shapes already allow for their turn, and a gauge is round. */
+function boundsOf(item) {
+  const box = uprightBounds(item);
+  const degrees = item.rotation ?? 0;
+  if (['Bar', 'Shape', 'Gauge'].includes(item.kind) || degrees % 360 === 0) return box;
+  const pivot = pivotOf(item);
+  const corners = [[box.left, box.top], [box.left + box.width, box.top], [box.left, box.top + box.height], [box.left + box.width, box.top + box.height]]
+    .map(([x, y]) => turnPoint({ x, y }, pivot, degrees));
+  const left = Math.min(...corners.map((c) => c.x));
+  const top = Math.min(...corners.map((c) => c.y));
+  return { left, top, width: Math.max(...corners.map((c) => c.x)) - left, height: Math.max(...corners.map((c) => c.y)) - top };
+}
 /* The screen is round, so a box's corners are what get cut off first. */
 function isOutsideCircle(item) {
   const box = boundsOf(item);
@@ -1227,21 +1326,33 @@ function ringClip(item) {
 
 function renderHandles() {
   if (!app.draft) return;
-  const area = screenArea();
   const handles = app.draft.elements.map((item, index) => {
-    const bounds = boundsOf(item);
-    const box = { ...bounds, left: bounds.left - area.left, top: bounds.top - area.top };
-    const handle = element('div', { className: `handle${index === app.selected ? ' selected' : ''}${isOutsideCircle(item) ? ' outside' : ''}` });
-    handle.hidden = Boolean(item.hidden); // kept in the list, so handles still line up with the items
-    handle.style.cssText = `left:${box.left}px;top:${box.top}px;width:${box.width}px;height:${box.height}px`;
-    if (item.kind === 'Gauge') {
-      handle.classList.add('gauge');
-      handle.style.clipPath = ringClip(item);
-    }
+    const handle = element('div', { className: `handle${item.kind === 'Gauge' ? ' gauge' : ''}` });
     handle.addEventListener('pointerdown', (event) => beginDrag(event, index, handle));
+    handle.addEventListener('dblclick', () => setSelection([index], index)); // picks one layer out of its group
+    handle.addEventListener('contextmenu', (event) => openLayerMenu(event, index));
     return handle;
   });
-  $('handles').replaceChildren(...handles);
+  $('handles').replaceChildren(...handles, selectionBox());
+  placeHandles();
+}
+
+/* Moves the handles in place, so a knob being dragged keeps its pointer. */
+function placeHandles() {
+  if (!app.draft) return;
+  const area = screenArea();
+  const nodes = $('handles').querySelectorAll('.handle');
+  app.draft.elements.forEach((item, index) => {
+    const node = nodes[index];
+    if (!node) return;
+    const box = boundsOf(item);
+    node.hidden = Boolean(item.hidden); // kept in the list, so handles still line up with the items
+    node.style.cssText = `left:${box.left - area.left}px;top:${box.top - area.top}px;width:${box.width}px;height:${box.height}px`;
+    if (item.kind === 'Gauge') node.style.clipPath = ringClip(item);
+    node.classList.toggle('selected', app.selection.includes(index));
+    node.classList.toggle('outside', isOutsideCircle(item));
+  });
+  placeSelectionBox();
 }
 
 let returnSprings = [];
@@ -1251,32 +1362,73 @@ const centerOf = (item) => {
   return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
 };
 
-function select(index) {
-  if (app.selected === index) return;
-  app.selected = index;
+/*
+ * Selection. app.selection holds every selected layer; app.selected is the one the Inspector shows, or -1 for the
+ * background. A group is the layers sharing a group name. Clicking one on the screen picks the whole group.
+ */
+const selectedItems = () => app.selection.map((index) => app.draft.elements[index]).filter(Boolean);
+const groupOf = (index) => app.draft?.elements[index]?.group || null;
+const membersOf = (group) => app.draft.elements.flatMap((item, index) => (item.group === group ? [index] : []));
+const withGroups = (indices) => [...new Set(indices.flatMap((index) => (groupOf(index) ? membersOf(groupOf(index)) : [index])))];
+const isWholeGroup = (indices) => indices.length > 1 && Boolean(groupOf(indices[0]))
+  && indices.every((index) => groupOf(index) === groupOf(indices[0])) && membersOf(groupOf(indices[0])).length === indices.length;
+
+function setSelection(indices, primary = indices[indices.length - 1]) {
+  const count = app.draft?.elements.length ?? 0;
+  app.selection = [...new Set(indices)].filter((index) => index >= 0 && index < count).sort((a, b) => a - b);
+  app.selected = app.selection.length === 0 ? -1 : app.selection.includes(primary) ? primary : app.selection[app.selection.length - 1];
   renderInspector();
-  // Updated in place: rebuilding the list here would destroy a row while it is being pressed.
-  document.querySelectorAll('.layer').forEach((row) => row.setAttribute('aria-selected', String(Number(row.dataset.index) === index)));
-  document.querySelectorAll('.handle').forEach((node, i) => node.classList.toggle('selected', i === index));
+  markSelection();
 }
 
+function select(index) {
+  if (app.selected === index && app.selection.length === (index < 0 ? 0 : 1)) return;
+  setSelection(index < 0 ? [] : [index], index);
+}
+
+/* Updated in place: rebuilding the list here would destroy a row while it is being pressed. */
+function markSelection() {
+  document.querySelectorAll('.layer').forEach((row) => {
+    const indices = row.dataset.indices.split(',').map(Number);
+    const selected = indices[0] === -1 ? app.selection.length === 0 : indices.every((index) => app.selection.includes(index));
+    row.setAttribute('aria-selected', String(selected));
+  });
+  placeHandles();
+}
+
+const isAdditive = (event) => event.ctrlKey || event.shiftKey || event.metaKey;
+
+/* Drags every selected layer together. One layer alone also snaps and springs back inside the screen. */
 function beginDrag(event, index, handle) {
+  if (event.button !== 0) return; // right-click opens the menu instead
   event.stopPropagation();
   event.preventDefault();
+  closeLayerMenu();
   returnSprings.forEach((s) => s.cancel());
   returnSprings = [];
-  select(index);
+  const picked = withGroups([index]);
+  if (isAdditive(event)) {
+    const on = picked.every((i) => app.selection.includes(i));
+    setSelection(on ? app.selection.filter((i) => !picked.includes(i)) : [...app.selection, ...picked], on ? undefined : index);
+    return;
+  }
+  if (!app.selection.includes(index)) setSelection(picked, index);
   $('stage').focus?.();
-  const item = app.draft.elements[index];
+  const moving = selectedItems().filter((item) => !item.hidden);
+  if (!moving.length) return;
+  const single = moving.length === 1 ? moving[0] : null;
   const area = screenArea();
   const scale = $('stage').getBoundingClientRect().width / area.w;
-  const grab = { x: event.clientX, y: event.clientY, itemX: item.x, itemY: item.y };
+  const grab = { x: event.clientX, y: event.clientY };
+  const starts = moving.map((item) => ({ item, x: item.x, y: item.y }));
+  const startBox = selectionBounds(moving);
+  const startCenter = { x: startBox.left + startBox.width / 2, y: startBox.top + startBox.height / 2 };
   const before = JSON.stringify(app.draft);
   let moved = false;
   handle.setPointerCapture(event.pointerId);
   handle.classList.add('dragging');
 
-  const place = (x, y) => {
+  const place = (item, x, y) => {
     // These can be nearly screen-sized, so edge resistance would leave them almost no room to move.
     if (isCentered(item)) {
       return {
@@ -1292,8 +1444,8 @@ function beginDrag(event, index, handle) {
     };
   };
 
-  /* Items snap to the screen's center and to each other's centers, on both axes. Alt turns it off. */
-  const others = app.draft.elements.filter((other) => other !== item && !other.hidden).map(centerOf);
+  /* Layers snap to the screen's center and to each other's centers, on both axes. Alt turns it off. */
+  const others = app.draft.elements.filter((other) => !moving.includes(other) && !other.hidden).map(centerOf);
   const targetsX = [SCREEN / 2, ...others.map((c) => c.x)];
   const targetsY = [SCREEN / 2, ...others.map((c) => c.y)];
   const snapTo = (value, targets, off) => {
@@ -1307,22 +1459,31 @@ function beginDrag(event, index, handle) {
   };
 
   const move = (e) => {
-    const rawX = grab.itemX + (e.clientX - grab.x) / scale;
-    const rawY = grab.itemY + (e.clientY - grab.y) / scale;
     if (!moved && Math.hypot(e.clientX - grab.x, e.clientY - grab.y) < 3) return;
     moved = true;
-    const center = centerOf({ ...item, x: rawX, y: rawY });
+    let dx = (e.clientX - grab.x) / scale;
+    let dy = (e.clientY - grab.y) / scale;
+    const center = single ? centerOf({ ...single, x: starts[0].x + dx, y: starts[0].y + dy }) : { x: startCenter.x + dx, y: startCenter.y + dy };
     const snapX = snapTo(center.x, targetsX, e.altKey);
     const snapY = snapTo(center.y, targetsY, e.altKey);
     showGuide('guide', 'left', snapX === null ? null : snapX - area.left);
     showGuide('guideH', 'top', snapY === null ? null : snapY - area.top);
-    const next = place(rawX + (snapX === null ? 0 : snapX - center.x), rawY + (snapY === null ? 0 : snapY - center.y));
-    item.x = Math.round(next.x);
-    item.y = Math.round(next.y);
-    const placed = boundsOf(item);
-    handle.style.left = `${placed.left - area.left}px`;
-    handle.style.top = `${placed.top - area.top}px`;
-    handle.classList.toggle('outside', isOutsideCircle(item));
+    dx += snapX === null ? 0 : snapX - center.x;
+    dy += snapY === null ? 0 : snapY - center.y;
+    if (single) {
+      const next = place(single, starts[0].x + dx, starts[0].y + dy);
+      single.x = Math.round(next.x);
+      single.y = Math.round(next.y);
+    } else {
+      // A group keeps its middle on the screen, so it can always be dragged back.
+      dx = Math.min(area.left + area.w, Math.max(area.left, startCenter.x + dx)) - startCenter.x;
+      dy = Math.min(area.top + area.h, Math.max(area.top, startCenter.y + dy)) - startCenter.y;
+      starts.forEach((start) => {
+        start.item.x = Math.round(start.x + dx);
+        start.item.y = Math.round(start.y + dy);
+      });
+    }
+    placeHandles();
     pushPreview();
   };
 
@@ -1336,7 +1497,7 @@ function beginDrag(event, index, handle) {
     if (!moved) return;
     app.undo.push(before);
     app.redo = [];
-    if (!isCentered(item)) settleInside(item, handle);
+    if (single && !isCentered(single)) settleInside(single);
     updateHistoryButtons();
     renderInspector();
   };
@@ -1346,29 +1507,287 @@ function beginDrag(event, index, handle) {
   handle.addEventListener('pointercancel', end);
 }
 
+/* The box around the selection, with corners that resize it and a round knob above that rotates it. */
+const RESIZE_CORNERS = [['nw', -1, -1], ['ne', 1, -1], ['sw', -1, 1], ['se', 1, 1]];
+
+function selectionBox() {
+  const box = element('div', { className: 'selection-box', id: 'selectionBox' });
+  box.hidden = true;
+  const turn = element('div', { className: 'selection-turn', title: 'Drag to rotate. Hold Shift for 15° steps.' });
+  turn.addEventListener('pointerdown', (event) => beginTransform(event, 'rotate'));
+  box.append(element('div', { className: 'selection-stem' }), turn, ...RESIZE_CORNERS.map(([name, sx, sy]) => {
+    const knob = element('div', { className: `selection-corner ${name}`, title: 'Drag to resize. Hold Alt to resize from the middle.' });
+    knob.addEventListener('pointerdown', (event) => beginTransform(event, 'resize', { sx, sy }));
+    return knob;
+  }));
+  return box;
+}
+
+function selectionBounds(items = selectedItems().filter((item) => !item.hidden)) {
+  if (!items.length) return null;
+  const boxes = items.map(boundsOf);
+  const left = Math.min(...boxes.map((b) => b.left));
+  const top = Math.min(...boxes.map((b) => b.top));
+  return {
+    left, top,
+    width: Math.max(...boxes.map((b) => b.left + b.width)) - left,
+    height: Math.max(...boxes.map((b) => b.top + b.height)) - top,
+  };
+}
+
+function placeSelectionBox() {
+  const node = $('selectionBox');
+  if (!node) return;
+  const bounds = selectionBounds();
+  node.hidden = !bounds;
+  if (!bounds) return;
+  const area = screenArea();
+  node.style.cssText = `left:${bounds.left - area.left}px;top:${bounds.top - area.top}px;width:${bounds.width}px;height:${bounds.height}px`;
+  node.classList.toggle('many', app.selection.length > 1);
+}
+
+/* Everything that sets a layer's size grows with it, so a resized group keeps its look. */
+const SCALED_FIELDS = ['thickness', 'height', 'cornerRadius', 'strokeWidth', 'shadowX', 'shadowY', 'shadowBlur'];
+const MIN_SCALE = 0.05;
+
+function scaledFields(saved, factor) {
+  const fields = { size: Math.max(4, Math.round(saved.size * factor)) };
+  SCALED_FIELDS.forEach((key) => {
+    if (typeof saved[key] === 'number') fields[key] = Math.round(saved[key] * factor * 10) / 10;
+  });
+  return fields;
+}
+
+/* Every change is worked out from where the drag began, so nothing drifts over a long drag. */
+function beginTransform(event, mode, corner) {
+  if (event.button !== 0) return;
+  event.stopPropagation();
+  event.preventDefault();
+  closeLayerMenu();
+  const items = selectedItems().filter((item) => !item.hidden);
+  if (!items.length) return;
+  const knob = event.currentTarget;
+  knob.setPointerCapture(event.pointerId);
+  const area = screenArea();
+  const stageBox = $('stage').getBoundingClientRect();
+  const scale = stageBox.width / area.w;
+  const toTheme = (e) => ({ x: area.left + (e.clientX - stageBox.left) / scale, y: area.top + (e.clientY - stageBox.top) / scale });
+  const box = selectionBounds(items);
+  const center = { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+  const starts = items.map((item) => ({ item, saved: clone(item), pivot: pivotOf(item) }));
+  const before = JSON.stringify(app.draft);
+  const grab = toTheme(event);
+  const startAngle = Math.atan2(grab.y - center.y, grab.x - center.x);
+  let moved = false;
+  $('stage').classList.add('transforming', mode);
+
+  const resize = (e) => {
+    const point = toTheme(e);
+    const fromMiddle = e.altKey;
+    const anchor = fromMiddle ? center : {
+      x: corner.sx < 0 ? box.left + box.width : box.left,
+      y: corner.sy < 0 ? box.top + box.height : box.top,
+    };
+    const reachX = Math.max(fromMiddle ? box.width / 2 : box.width, 1);
+    const reachY = Math.max(fromMiddle ? box.height / 2 : box.height, 1);
+    const factor = Math.max(MIN_SCALE, (point.x - anchor.x) * corner.sx / reachX, (point.y - anchor.y) * corner.sy / reachY);
+    starts.forEach(({ item, saved, pivot }) => {
+      Object.assign(item, scaledFields(saved, factor));
+      const at = placeAt(item, { x: anchor.x + (pivot.x - anchor.x) * factor, y: anchor.y + (pivot.y - anchor.y) * factor });
+      item.x = Math.round(at.x);
+      item.y = Math.round(at.y);
+    });
+  };
+
+  const rotate = (e) => {
+    const point = toTheme(e);
+    let degrees = (Math.atan2(point.y - center.y, point.x - center.x) - startAngle) * 180 / Math.PI;
+    if (e.shiftKey) {
+      // One layer snaps its own angle; a group snaps how far it has turned.
+      const own = starts.length === 1 ? starts[0].saved.rotation ?? 0 : 0;
+      degrees = Math.round((own + degrees) / 15) * 15 - own;
+    }
+    degrees = Math.round(degrees);
+    starts.forEach(({ item, saved, pivot }) => {
+      item.rotation = ((((saved.rotation ?? 0) + degrees) % 360) + 360) % 360;
+      const at = placeAt(item, turnPoint(pivot, center, degrees));
+      item.x = Math.round(at.x);
+      item.y = Math.round(at.y);
+    });
+  };
+
+  const move = (e) => {
+    moved = true;
+    (mode === 'rotate' ? rotate : resize)(e);
+    placeHandles();
+    pushPreview();
+  };
+
+  const end = () => {
+    knob.removeEventListener('pointermove', move);
+    knob.removeEventListener('pointerup', end);
+    knob.removeEventListener('pointercancel', end);
+    $('stage').classList.remove('transforming', mode);
+    if (!moved) return;
+    app.undo.push(before);
+    app.redo = [];
+    updateHistoryButtons();
+    renderInspector();
+    renderHandles();
+  };
+
+  knob.addEventListener('pointermove', move);
+  knob.addEventListener('pointerup', end);
+  knob.addEventListener('pointercancel', end);
+}
+
+/* Dragging across empty screen selects every layer the box touches. A click there selects the background. */
+function beginMarquee(event) {
+  if (event.button !== 0 || !app.draft) return;
+  closeLayerMenu();
+  const stage = $('stage');
+  const area = screenArea();
+  const stageBox = stage.getBoundingClientRect();
+  const scale = stageBox.width / area.w;
+  const toLocal = (e) => ({ x: (e.clientX - stageBox.left) / scale, y: (e.clientY - stageBox.top) / scale });
+  const start = toLocal(event);
+  const additive = isAdditive(event);
+  const kept = additive ? [...app.selection] : [];
+  const marquee = $('marquee');
+  let moved = false;
+  stage.setPointerCapture(event.pointerId);
+
+  const move = (e) => {
+    const point = toLocal(e);
+    if (!moved && Math.hypot(point.x - start.x, point.y - start.y) * scale < 3) return;
+    moved = true;
+    const left = Math.min(point.x, start.x);
+    const top = Math.min(point.y, start.y);
+    const width = Math.abs(point.x - start.x);
+    const height = Math.abs(point.y - start.y);
+    marquee.hidden = false;
+    marquee.style.cssText = `left:${left}px;top:${top}px;width:${width}px;height:${height}px`;
+    const hits = app.draft.elements.flatMap((item, index) => {
+      if (item.hidden) return [];
+      const box = boundsOf(item);
+      const boxLeft = box.left - area.left;
+      const boxTop = box.top - area.top;
+      return boxLeft < left + width && boxLeft + box.width > left && boxTop < top + height && boxTop + box.height > top ? [index] : [];
+    });
+    const next = [...new Set([...kept, ...withGroups(hits)])].sort((a, b) => a - b);
+    if (next.join() !== app.selection.join()) setSelection(next);
+  };
+
+  const end = () => {
+    stage.removeEventListener('pointermove', move);
+    stage.removeEventListener('pointerup', end);
+    stage.removeEventListener('pointercancel', end);
+    marquee.hidden = true;
+    if (!moved && !additive) setSelection([]);
+  };
+
+  stage.addEventListener('pointermove', move);
+  stage.addEventListener('pointerup', end);
+  stage.addEventListener('pointercancel', end);
+}
+
+/* Groups. The name doubles as the group's id, so it stays the same however the layers move. */
+function newGroupName() {
+  const used = new Set(app.draft.elements.map((item) => item.group).filter(Boolean));
+  let number = 1;
+  while (used.has(`Group ${number}`)) number++;
+  return `Group ${number}`;
+}
+
+/* A group of one isn't a group. */
+function cleanGroups() {
+  const counts = {};
+  app.draft.elements.forEach((item) => { if (item.group) counts[item.group] = (counts[item.group] ?? 0) + 1; });
+  app.draft.elements.forEach((item) => { if (item.group && counts[item.group] < 2) delete item.group; });
+}
+
+/* The members move next to each other in the stack, where the topmost one was, so the group reads as one layer. */
+function groupSelection() {
+  const indices = app.selection;
+  if (indices.length < 2 || isWholeGroup(indices)) return;
+  remember();
+  const items = app.draft.elements;
+  const chosen = indices.map((index) => items[index]);
+  const top = Math.max(...indices);
+  const below = items.filter((item, index) => index < top && !indices.includes(index)).length;
+  const rest = items.filter((item, index) => !indices.includes(index));
+  const name = newGroupName();
+  chosen.forEach((item) => { item.group = name; });
+  app.draft.elements = [...rest.slice(0, below), ...chosen, ...rest.slice(below)];
+  cleanGroups();
+  app.selection = chosen.map((item) => app.draft.elements.indexOf(item));
+  app.selected = app.selection[app.selection.length - 1];
+  renderInspector();
+  changed();
+}
+
+function ungroupSelection() {
+  const items = selectedItems().filter((item) => item.group);
+  if (!items.length) return;
+  remember();
+  items.forEach((item) => { delete item.group; });
+  cleanGroups();
+  renderInspector();
+  changed();
+}
+
+/* Right-click on a layer, on the screen or in the list. */
+function openLayerMenu(event, index) {
+  event.preventDefault();
+  event.stopPropagation();
+  if (!app.draft) return;
+  if (index !== undefined && !app.selection.includes(index)) setSelection(withGroups([index]), index);
+  const indices = app.selection;
+  const entry = (label, shortcut, enabled, run) => {
+    const button = element('button', { type: 'button', disabled: !enabled, onclick: () => { closeLayerMenu(); run(); } },
+      element('span', { textContent: label }), element('kbd', { textContent: shortcut }));
+    button.setAttribute('role', 'menuitem');
+    return button;
+  };
+  const menu = $('layerMenu');
+  menu.replaceChildren(
+    entry('Group', 'Ctrl+G', indices.length > 1 && !isWholeGroup(indices), groupSelection),
+    entry('Ungroup', 'Ctrl+Shift+G', indices.some((i) => groupOf(i)), ungroupSelection),
+    element('hr'),
+    entry('Delete', 'Del', indices.length > 0, removeSelected));
+  menu.hidden = false;
+  const box = menu.getBoundingClientRect();
+  menu.style.left = `${Math.min(event.clientX, innerWidth - box.width - 8)}px`;
+  menu.style.top = `${Math.min(event.clientY, innerHeight - box.height - 8)}px`;
+  menu.querySelector('button:not(:disabled)')?.focus();
+}
+
+function closeLayerMenu() {
+  const menu = $('layerMenu');
+  if (menu && !menu.hidden) menu.hidden = true;
+}
 /* A dragged element released past an edge springs back inside. */
-function settleInside(item, handle) {
+function settleInside(item) {
   const box = boundsOf(item);
   const area = screenArea();
   const shiftX = Math.max(0, area.left - box.left) - Math.max(0, box.left + box.width - area.left - area.w);
   const shiftY = Math.max(0, area.top - box.top) - Math.max(0, box.top + box.height - area.top - area.h);
-  const animate = (axis, shift, css) => {
+  const animate = (axis, shift) => {
     if (!shift) return;
     const from = item[axis];
     returnSprings.push(spring({
       from, to: from + shift, response: 0.3,
       onUpdate: (value) => {
         item[axis] = Math.round(value);
-        handle.style[css] = `${boundsOf(item)[css] - area[css]}px`;
+        placeHandles();
         pushPreview();
       },
       onDone: updateHistoryButtons,
     }));
   };
-  animate('x', shiftX, 'left');
-  animate('y', shiftY, 'top');
+  animate('x', shiftX);
+  animate('y', shiftY);
 }
-
 function addElement(spec) {
   remember();
   app.draft.elements.push({
@@ -1379,19 +1798,21 @@ function addElement(spec) {
     ...spec,
   });
   app.selected = app.draft.elements.length - 1;
+  app.selection = [app.selected];
   renderInspector();
   changed();
 }
 
 function removeSelected() {
-  if (app.selected < 0) return;
+  if (!app.selection.length) return;
   remember();
-  app.draft.elements.splice(app.selected, 1);
+  [...app.selection].sort((a, b) => b - a).forEach((index) => app.draft.elements.splice(index, 1));
+  cleanGroups();
+  app.selection = [];
   app.selected = -1;
   renderInspector();
   changed();
 }
-
 function field(label, control, valueNode) {
   const title = element('span', { textContent: label });
   if (valueNode) title.append(valueNode);
@@ -1826,43 +2247,102 @@ function layerName(item) {
   return item.kind;
 }
 
+/* Rows top to bottom as the stack draws them. A group's header row comes just before its members. */
+function layerRows() {
+  const items = app.draft.elements;
+  const rows = [];
+  const seen = new Set();
+  for (let index = items.length - 1; index >= 0; index--) {
+    const group = items[index].group || null;
+    if (group && !seen.has(group)) {
+      seen.add(group);
+      rows.push({ group, indices: membersOf(group) });
+    }
+    if (!group || !app.collapsed.has(group)) rows.push({ index, group, indices: [index] });
+  }
+  return rows;
+}
+
 function renderLayers() {
   const list = $('layerList');
   if (!app.draft) { list.replaceChildren(); return; }
-  const items = app.draft.elements;
-  const rows = items.map((item, index) => [item, index]).reverse().map(([item, index]) => {
-    const row = element('div', { className: `layer${item.hidden ? ' is-hidden' : ''}`, tabIndex: 0 });
-    row.dataset.index = index;
-    row.setAttribute('role', 'option');
-    row.setAttribute('aria-selected', String(index === app.selected));
-    const eye = element('button', {
-      title: item.hidden ? 'Show' : 'Hide',
-      onclick: (event) => {
-        event.stopPropagation();
-        remember();
-        item.hidden = !item.hidden;
-        changed();
-      },
-    });
-    eye.setAttribute('aria-label', `${item.hidden ? 'Show' : 'Hide'} ${layerName(item)}`);
-    eye.append(icon(item.hidden ? 'Hidden' : 'Shown'));
-    eye.addEventListener('pointerdown', (event) => event.stopPropagation());
-    row.append(icon(item.kind === 'Shape' ? item.shape : item.kind), element('span', { className: 'layer-name', textContent: layerName(item), title: layerName(item) }), eye);
-    row.addEventListener('pointerdown', (event) => beginLayerDrag(event, row, index));
-    row.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' || event.key === ' ') { select(index); event.preventDefault(); }
-    });
-    return row;
+  const rows = layerRows();
+  list.replaceChildren(...rows.map((row, slot) => (row.index === undefined ? groupRow(rows, slot) : itemRow(rows, slot))), backgroundLayer());
+  markSelection();
+}
+
+function eyeButton(label, hidden, toggleHidden) {
+  const eye = element('button', {
+    title: hidden ? 'Show' : 'Hide',
+    onclick: (event) => {
+      event.stopPropagation();
+      remember();
+      toggleHidden();
+      changed();
+    },
   });
-  list.replaceChildren(...rows, backgroundLayer());
+  eye.setAttribute('aria-label', `${hidden ? 'Show' : 'Hide'} ${label}`);
+  eye.append(icon(hidden ? 'Hidden' : 'Shown'));
+  eye.addEventListener('pointerdown', (event) => event.stopPropagation());
+  return eye;
+}
+
+function itemRow(rows, slot) {
+  const { index, group } = rows[slot];
+  const item = app.draft.elements[index];
+  const row = element('div', { className: `layer${item.hidden ? ' is-hidden' : ''}${group ? ' in-group' : ''}`, tabIndex: 0 });
+  row.dataset.indices = String(index);
+  row.setAttribute('role', 'option');
+  row.append(icon(item.kind === 'Shape' ? item.shape : item.kind), element('span', { className: 'layer-name', textContent: layerName(item), title: layerName(item) }),
+    eyeButton(layerName(item), item.hidden, () => { item.hidden = !item.hidden; }));
+  row.addEventListener('pointerdown', (event) => beginLayerDrag(event, row, rows, slot));
+  row.addEventListener('contextmenu', (event) => openLayerMenu(event, index));
+  row.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') { select(index); event.preventDefault(); }
+  });
+  return row;
+}
+
+function groupRow(rows, slot) {
+  const { group, indices } = rows[slot];
+  const items = indices.map((index) => app.draft.elements[index]);
+  const hidden = items.every((item) => item.hidden);
+  const collapsed = app.collapsed.has(group);
+  const row = element('div', { className: `layer group-layer${hidden ? ' is-hidden' : ''}`, tabIndex: 0 });
+  row.dataset.indices = indices.join(',');
+  row.setAttribute('role', 'option');
+  row.setAttribute('aria-expanded', String(!collapsed));
+  const caret = element('button', {
+    className: 'layer-caret', title: collapsed ? 'Show the layers in this group' : 'Hide the layers in this group',
+    onclick: (event) => {
+      event.stopPropagation();
+      if (collapsed) app.collapsed.delete(group);
+      else app.collapsed.add(group);
+      renderLayers();
+    },
+  }, icon('Chevron'));
+  caret.setAttribute('aria-label', `${collapsed ? 'Expand' : 'Collapse'} ${group}`);
+  caret.addEventListener('pointerdown', (event) => event.stopPropagation());
+  row.append(caret, icon('Group'), element('span', { className: 'layer-name', textContent: group, title: group }),
+    eyeButton(group, hidden, () => items.forEach((item) => { item.hidden = !hidden; })));
+  row.addEventListener('pointerdown', (event) => beginLayerDrag(event, row, rows, slot));
+  row.addEventListener('contextmenu', (event) => {
+    if (!indices.every((index) => app.selection.includes(index))) setSelection(indices);
+    openLayerMenu(event);
+  });
+  row.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') { setSelection(indices); event.preventDefault(); }
+    if (event.key === 'ArrowLeft' && !collapsed) caret.click();
+    if (event.key === 'ArrowRight' && collapsed) caret.click();
+  });
+  return row;
 }
 
 /* Always at the bottom of the stack, so it can't be dragged or hidden. */
 function backgroundLayer() {
   const row = element('div', { className: 'layer', tabIndex: 0 }, icon('Background'), element('span', { className: 'layer-name', textContent: 'Background' }));
-  row.dataset.index = -1;
+  row.dataset.indices = '-1';
   row.setAttribute('role', 'option');
-  row.setAttribute('aria-selected', String(app.selected === -1));
   row.addEventListener('pointerdown', () => select(-1));
   row.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' || event.key === ' ') { select(-1); event.preventDefault(); }
@@ -1870,14 +2350,29 @@ function backgroundLayer() {
   return row;
 }
 
-/* Press selects at once. Moving the row reorders the stack, and it stays under the pointer. */
-function beginLayerDrag(event, row, index) {
-  select(index);
-  const items = app.draft.elements;
-  const startSlot = items.length - 1 - index;
-  const height = row.offsetHeight + 0;
+/*
+ * Press selects at once: Ctrl adds or removes a row, Shift selects the run of layers up to it.
+ * Moving the row reorders the stack, and it stays under the pointer. A group's row moves the whole group.
+ */
+function beginLayerDrag(event, row, rows, slot) {
+  if (event.button !== 0) return;
+  closeLayerMenu();
+  const source = rows[slot];
+  if (event.shiftKey && app.selected >= 0) {
+    const low = Math.min(app.selected, ...source.indices);
+    const high = Math.max(app.selected, ...source.indices);
+    setSelection(Array.from({ length: high - low + 1 }, (_, i) => low + i), app.selected);
+    return;
+  }
+  if (event.ctrlKey || event.metaKey) {
+    const on = source.indices.every((index) => app.selection.includes(index));
+    setSelection(on ? app.selection.filter((index) => !source.indices.includes(index)) : [...app.selection, ...source.indices]);
+    return;
+  }
+  setSelection(source.indices, source.index);
+  const height = row.offsetHeight;
   const startY = event.clientY;
-  let target = startSlot;
+  let target = slot;
   let dragging = false;
   let marker = null;
   row.setPointerCapture(event.pointerId);
@@ -1892,21 +2387,16 @@ function beginLayerDrag(event, row, index) {
       $('layerList').append(marker);
     }
     row.style.transform = `translateY(${offset}px)`;
-    target = Math.min(items.length - 1, Math.max(0, startSlot + Math.round(offset / height)));
-    marker.style.top = `${(target + (target > startSlot ? 1 : 0)) * height - 1}px`;
+    target = Math.min(rows.length - 1, Math.max(0, slot + Math.round(offset / height)));
+    marker.style.top = `${(target + (target > slot ? 1 : 0)) * height - 1}px`;
   };
 
   const end = () => {
     row.removeEventListener('pointermove', move);
     row.removeEventListener('pointerup', end);
     row.removeEventListener('pointercancel', end);
-    if (!dragging || target === startSlot) { renderLayers(); return; }
-    remember();
-    const [moved] = items.splice(index, 1);
-    items.splice(items.length - target, 0, moved);
-    app.selected = items.indexOf(moved);
-    renderHandles();
-    changed();
+    if (!dragging || target === slot) { renderLayers(); return; }
+    moveRows(source, rows, target > slot ? target + 1 : target);
   };
 
   row.addEventListener('pointermove', move);
@@ -1914,6 +2404,34 @@ function beginLayerDrag(event, row, index) {
   row.addEventListener('pointercancel', end);
 }
 
+/*
+ * Puts a row's layers just above the row that ends up below the drop line. A layer dropped between two members
+ * of a group joins it, and one dropped outside its group leaves it. A whole group never lands inside another.
+ */
+function moveRows(source, rows, line) {
+  const items = app.draft.elements;
+  const moving = [...source.indices].sort((a, b) => a - b).map((index) => items[index]);
+  const outside = (row) => !row.indices.every((index) => source.indices.includes(index));
+  let below = rows.slice(line).find(outside) ?? null;
+  const above = rows.slice(0, line).reverse().find(outside) ?? null;
+  const isGroup = source.index === undefined;
+  const into = below && below.index !== undefined && below.group && above?.group === below.group ? below.group : null;
+  if (isGroup && into) below = rows.find((row) => row.index === undefined && row.group === into);
+  const anchor = below ? items[Math.max(...below.indices)] : null;
+  remember();
+  const rest = items.filter((item) => !moving.includes(item));
+  rest.splice(anchor ? rest.indexOf(anchor) + 1 : 0, 0, ...moving);
+  app.draft.elements = rest;
+  if (!isGroup) {
+    if (into) moving[0].group = into;
+    else delete moving[0].group;
+  }
+  cleanGroups();
+  app.selection = moving.map((item) => rest.indexOf(item)).sort((a, b) => a - b);
+  app.selected = app.selection[app.selection.length - 1];
+  renderInspector();
+  changed();
+}
 function selectField(label, options, value, apply) {
   const input = element('select', {}, ...Object.entries(options).map(([key, text]) => element('option', { value: key, textContent: text })));
   input.value = value;
@@ -1985,6 +2503,10 @@ function renderInspector() {
   closePicker();
   const panel = $('inspector');
   if (!app.draft) { panel.replaceChildren(); return; }
+  if (app.selection.length > 1) {
+    panel.replaceChildren(...selectionControls());
+    return;
+  }
   const item = app.draft.elements[app.selected];
   const forItem = { Gauge: gaugeControls, Bar: barControls, Shape: shapeControls, Capture: captureControls, Music: musicControls, Weather: weatherControls }[item?.kind] ?? elementControls;
   const controls = item ? forItem(item) : backgroundControls();
@@ -2048,6 +2570,7 @@ function gaugeControls(item) {
     centerButton(item),
     ...gaugeRangeSliders(item),
     slider('Size', item.size, { min: 80, max: SCREEN, step: 2, unit: ' px', reset: NEW_GAUGE.size }, (v) => { item.size = v; }),
+    rotationSlider(item),
     slider('Thickness', item.thickness, { min: 4, max: 48, step: 1, unit: ' px', reset: NEW_GAUGE.thickness }, (v) => { item.thickness = v; }),
     slider('Start Angle', item.startAngle, { min: 0, max: 360, step: 5, unit: '°', reset: NEW_GAUGE.startAngle }, (v) => { item.startAngle = v; }),
     slider('Arc Length', Math.abs(item.sweep), { min: 30, max: 360, step: 5, unit: '°', reset: NEW_GAUGE.sweep }, (v) => { item.sweep = sign * v; }),
@@ -2233,6 +2756,7 @@ function captureControls(item) {
     centerButton(item),
     slider('Size', item.size, { min: 40, max: SCREEN, step: 2, unit: ' px', reset: NEW_CAPTURE.size }, (v) => { item.size = v; }),
     slider('Corner Radius', item.cornerRadius ?? 0, { min: 0, max: 240, step: 2, unit: ' px', reset: NEW_CAPTURE.cornerRadius }, (v) => { item.cornerRadius = v; }),
+    rotationSlider(item),
     element('button', { textContent: 'Delete', className: 'danger wide', onclick: removeSelected }));
   return controls;
 }
@@ -2270,6 +2794,7 @@ function weatherControls(item) {
     positionFields(item),
     centerButton(item),
     slider('Width', item.size, { min: 160, max: SCREEN, step: 2, unit: ' px', reset: NEW_WEATHER.size }, (v) => { item.size = v; }),
+    rotationSlider(item),
     toggle('Condition and City', item.showCondition !== false, (v) => { item.showCondition = v; }),
     toggle('High, Low, Humidity, Wind', item.showDetails !== false, (v) => { item.showDetails = v; }),
     toggle('3-Day Forecast', item.showForecast !== false, (v) => { item.showForecast = v; }),
@@ -2293,6 +2818,7 @@ function musicControls(item) {
     positionFields(item),
     centerButton(item),
     slider('Width', item.size, { min: 120, max: SCREEN, step: 2, unit: ' px', reset: NEW_MUSIC.size }, (v) => { item.size = v; }),
+    rotationSlider(item),
     toggle('Album Art', item.showArt !== false, (v) => { item.showArt = v; }),
     toggle('Song Title', item.showTitle !== false, (v) => { item.showTitle = v; }),
     toggle('Artist', item.showArtist !== false, (v) => { item.showArtist = v; }),
@@ -2386,6 +2912,7 @@ function elementControls(item) {
     }),
     ...fontControls(item),
     slider('Size', item.size, { min: 12, max: 160, step: 1, unit: ' px', reset: NEW_TEXT_SIZE }, (v) => { item.size = v; }),
+    rotationSlider(item),
     colorField('Color', item.color, (v) => { item.color = v; }),
     segmented('Alignment', ['Left', 'Center', 'Right'], item.align ?? 'Left', (v) => { item.align = v; }),
     element('div', { className: 'inspector-group' }, ...strokeControls(item), ...shadowControls(item)),
@@ -2393,6 +2920,22 @@ function elementControls(item) {
   return controls;
 }
 
+/* Several layers, or a group: they move, resize and rotate together on the screen. */
+function selectionControls() {
+  const indices = app.selection;
+  const whole = isWholeGroup(indices);
+  return [
+    element('h3', { textContent: whole ? groupOf(indices[0]) : `${indices.length} Layers` }),
+    element('p', { className: 'hint', textContent: 'Drag any of them on the screen to move them together. Drag a corner of the box to resize them, or the round handle above it to rotate them. Hold Shift to rotate in 15° steps, or Alt to resize from the middle.' }),
+    whole
+      ? element('button', { textContent: 'Ungroup', className: 'wide', title: 'Ctrl+Shift+G', onclick: ungroupSelection })
+      : element('button', { textContent: 'Group', className: 'wide primary', title: 'Ctrl+G', onclick: groupSelection }),
+    element('p', { className: 'hint', textContent: whole
+      ? 'Clicking a member on the screen picks the whole group. Double-click it, or pick it in Layers, to change just that one.'
+      : 'Grouped layers stay together in Layers and on the screen. You can also right-click to group them.' }),
+    element('button', { textContent: 'Delete', className: 'danger wide', onclick: removeSelected }),
+  ];
+}
 function backgroundControls() {
   const { background } = app.draft;
   const controls = [
@@ -2460,6 +3003,7 @@ function fitStage() {
   stage.style.height = `${h}px`;
   stage.style.margin = `${-h / 2}px 0 0 ${-w / 2}px`;
   stage.style.transform = `scale(${scale})`;
+  stage.style.setProperty('--stage-scale', scale); // keeps the selection knobs the same size in any window
 }
 
 /* Messages from the app */
@@ -2583,6 +3127,10 @@ const handlers = {
     app.captureSources = message;
     if ($('captureDialog').open) renderCaptureSources();
   },
+  fans(message) {
+    app.fans = message;
+    renderFans();
+  },
   notice(message) { toast(message.message); },
   error(message) { toast(message.message); },
 };
@@ -2593,6 +3141,7 @@ function setStatus(status) {
 }
 
 host.addEventListener('message', (event) => handlers[event.data.type]?.(event.data));
+setInterval(() => { if (app.page === 'settings' && !document.hidden) send({ type: 'listFans' }); }, 2000);
 
 document.querySelectorAll('.nav-item').forEach((node) => node.addEventListener('click', () => requestPage(node.dataset.page)));
 $('resetPanels').onclick = resetPanels;
@@ -2652,7 +3201,8 @@ $('saveAsForm').addEventListener('submit', (event) => {
 });
 $('themeName').addEventListener('focus', () => remember());
 $('themeName').addEventListener('input', (event) => { app.draft.name = event.target.value; updateHistoryButtons(); });
-$('stage').addEventListener('pointerdown', () => select(-1));
+$('stage').addEventListener('pointerdown', beginMarquee);
+$('stage').addEventListener('contextmenu', (event) => openLayerMenu(event));
 $('pickerArea').addEventListener('pointerdown', trackPickerArea);
 $('pickerHue').addEventListener('input', (event) => { picker.h = Number(event.target.value); pickerChanged(); });
 $('pickerHex').addEventListener('input', (event) => {
@@ -2689,23 +3239,33 @@ $('pickScreen').onclick = () => {
 addEventListener('pointerdown', (event) => {
   if (picker.apply && !$('picker').contains(event.target) && !picker.anchor?.contains(event.target) && !event.target.closest?.('dialog')) closePicker();
 }, true);
-addEventListener('resize', () => { if (app.page === 'editor') fitStage(); });
+addEventListener('pointerdown', (event) => { if (!$('layerMenu').contains(event.target)) closeLayerMenu(); }, true);
+addEventListener('blur', closeLayerMenu);
+addEventListener('resize', () => { closeLayerMenu(); if (app.page === 'editor') fitStage(); });
 
 addEventListener('keydown', (event) => {
   if (document.querySelector('dialog[open]')) return;
   if (event.key === 'Escape' && picker.apply) { closePicker(); return; }
+  if (event.key === 'Escape' && !$('layerMenu').hidden) { closeLayerMenu(); return; }
   if (app.page !== 'editor' || event.target.matches('input, select')) return;
   const key = event.key.toLowerCase();
   if (event.ctrlKey && key === 'z') { restore(app.undo, app.redo); event.preventDefault(); return; }
   if (event.ctrlKey && key === 'y') { restore(app.redo, app.undo); event.preventDefault(); return; }
   if (event.ctrlKey && key === 's') { if (!$('save').disabled) saveDraft(); event.preventDefault(); return; }
+  if (event.ctrlKey && key === 'g') { if (event.shiftKey) ungroupSelection(); else groupSelection(); event.preventDefault(); return; }
+  if (event.ctrlKey && key === 'a' && app.draft) {
+    setSelection(app.draft.elements.flatMap((item, index) => (item.hidden ? [] : [index])));
+    event.preventDefault();
+    return;
+  }
+  if (key === 'escape' && app.selection.length) { setSelection([]); return; }
   if (key === 'delete' || key === 'backspace') { removeSelected(); return; }
-  const item = app.draft?.elements[app.selected];
+  const items = app.draft ? selectedItems() : [];
   const step = event.shiftKey ? 10 : 1;
   const moves = { arrowleft: ['x', -step], arrowright: ['x', step], arrowup: ['y', -step], arrowdown: ['y', step] };
-  if (item && moves[key]) {
+  if (items.length && moves[key]) {
     remember();
-    item[moves[key][0]] += moves[key][1];
+    items.forEach((item) => { item[moves[key][0]] += moves[key][1]; });
     renderInspector();
     changed();
     event.preventDefault();

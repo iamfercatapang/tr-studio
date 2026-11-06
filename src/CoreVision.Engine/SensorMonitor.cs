@@ -28,7 +28,11 @@ public sealed record RawStats(
     double? GpuHotSpot = null, double? GpuMemoryTemp = null, double? MotherboardTemp = null,
     double? PumpRpm = null, double? CpuFanRpm = null, double? CaseFanRpm = null,
     double? MemoryUsed = null, double? MemoryAvailable = null, double? MemorySpeed = null,
-    double? GpuMemoryUsed = null);
+    double? GpuMemoryUsed = null)
+{
+    /// <summary>Every fan header on the motherboard, for choosing which one is the pump in Settings.</summary>
+    public IReadOnlyList<FanHeader> Fans { get; init; } = [];
+}
 
 public sealed record Stats(
     Reading CpuTemp, Reading CpuLoad, Reading CpuPower,
@@ -47,6 +51,9 @@ public sealed record Stats(
 
     /// <summary>The temperature outside, from the weather forecast.</summary>
     public Reading OutdoorTemp { get; init; } = new(null, ReadingState.Missing);
+
+    /// <summary>Every fan header on the motherboard, as last read. Empty once readings turn stale.</summary>
+    public IReadOnlyList<FanHeader> Fans { get; init; } = [];
 
     /// <summary>Video memory in use, in GB.</summary>
     public Reading GpuMemoryUsed { get; init; } = new(null, ReadingState.Missing);
@@ -100,6 +107,7 @@ public sealed record Stats(
         Reading.Check(raw.MemorySpeed, 1, MaxMemorySpeed))
     {
         GpuMemoryUsed = Reading.Check(raw.GpuMemoryUsed / 1024, 0, MaxGpuMemoryGb), // the sensor reports MB
+        Fans = raw.Fans,
     };
 
     public Stats AsStale() => new(

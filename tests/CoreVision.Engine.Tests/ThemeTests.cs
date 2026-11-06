@@ -39,6 +39,15 @@ public sealed class ThemeTests : IDisposable
         Assert.Equal(Theme.Default.Elements, loaded.Elements);
     }
 
+    [Fact]
+    public void Groups_and_rotation_survive_a_save()
+    {
+        var json = """{"name":"Grouped","background":{"kind":"Color","color":"#000000"},"elements":[{"kind":"Text","x":10,"y":20,"size":30,"text":"A","group":"Group 1","rotation":45},{"kind":"Gauge","x":240,"y":240,"size":200,"group":"Group 1"}]}""";
+        var theme = Theme.FromJson(Theme.FromJson(json).ToJson());
+        Assert.All(theme.Elements, element => Assert.Equal("Group 1", element.Group));
+        Assert.Equal(45, theme.Elements[0].Rotation);
+    }
+
     [Theory]
     [InlineData("not json")]
     [InlineData("{}")]

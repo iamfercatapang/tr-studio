@@ -4,15 +4,17 @@ namespace CoreVision.Engine;
 
 public sealed class LibreSensorSource : ISensorSource
 {
-    // On the ASUS PRIME B550M-A WIFI II. The pump speed confirms Fan #7; the others are best matches for that board.
-    const string PumpHeader = "Fan #7", CpuFanHeader = "Fan #2", CaseFanHeader = "Fan #3";
-    const string BoardTemperature = "Temperature #1";
+    // "Temperature #1" on boards that only number their sensors (ASUS PRIME B550M-A WIFI II); MSI calls it "System".
+    static readonly string[] BoardTemperatures = ["Temperature #1", "Motherboard", "System"];
 
     readonly Computer _computer;
+    readonly Func<FanChoice> _fans;
     readonly double? _memorySpeed = SystemSpecs.ReadMemorySpeed(); // fixed at boot, so it's read once
 
-    public LibreSensorSource()
+    /// <param name="fans">Read on every update, so a new pick in Settings shows at once.</param>
+    public LibreSensorSource(Func<FanChoice>? fans = null)
     {
+        _fans = fans ?? (() => new FanChoice());
         _computer = new Computer { IsCpuEnabled = true, IsGpuEnabled = true, IsMemoryEnabled = true, IsMotherboardEnabled = true };
         _computer.Open();
     }
@@ -28,7 +30,13 @@ public sealed class LibreSensorSource : ISensorSource
         var cpu = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Cpu);
         var gpu = _computer.Hardware.FirstOrDefault(h => h.HardwareType is HardwareType.GpuNvidia or HardwareType.GpuAmd or HardwareType.GpuIntel);
         var memory = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Memory && h.Name == "Total Memory");
-        var board = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Motherboard)?.SubHardware.FirstOrDefault();
+        // Some boards have more than one sensor chip, so every one is searched.
+        var boardSensors = _computer.Hardware.Where(h => h.HardwareType == HardwareType.Motherboard)
+            .SelectMany(h => h.Sensors.Concat(h.SubHardware.SelectMany(sub => sub.Sensors))).ToList();
+        var fans = boardSensors.Where(s => s.SensorType == SensorType.Fan)
+            .Select(s => new FanHeader(s.Identifier.ToString(), s.Name, s.Value)).ToList();
+        var choice = _fans();
+        double? Fan(FanRole role) => FanMatch.Resolve(fans, choice, role)?.Rpm;
 
         return new RawStats(
             CpuTemp: Find(cpu, SensorType.Temperature, "Core (Tctl/Tdie)") ?? Find(cpu, SensorType.Temperature, "CPU Package"),
@@ -43,14 +51,18 @@ public sealed class LibreSensorSource : ISensorSource
             GpuFan: Find(gpu, SensorType.Fan, "GPU Fan 1"),
             GpuHotSpot: Find(gpu, SensorType.Temperature, "GPU Hot Spot"),
             GpuMemoryTemp: Find(gpu, SensorType.Temperature, "GPU Memory Junction"),
-            MotherboardTemp: Find(board, SensorType.Temperature, BoardTemperature),
-            PumpRpm: Find(board, SensorType.Fan, PumpHeader),
-            CpuFanRpm: Find(board, SensorType.Fan, CpuFanHeader),
-            CaseFanRpm: Find(board, SensorType.Fan, CaseFanHeader),
+            MotherboardTemp: BoardTemperatures.Select(name => boardSensors.FirstOrDefault(s => s.SensorType == SensorType.Temperature && s.Name == name))
+                .FirstOrDefault(s => s != null)?.Value,
+            PumpRpm: Fan(FanRole.Pump),
+            CpuFanRpm: Fan(FanRole.CpuFan),
+            CaseFanRpm: Fan(FanRole.CaseFan),
             MemoryUsed: Find(memory, SensorType.Data, "Memory Used"),
             MemoryAvailable: Find(memory, SensorType.Data, "Memory Available"),
             MemorySpeed: _memorySpeed,
-            GpuMemoryUsed: Find(gpu, SensorType.SmallData, "GPU Memory Used"));
+            GpuMemoryUsed: Find(gpu, SensorType.SmallData, "GPU Memory Used"))
+        {
+            Fans = fans,
+        };
     }
 
     static double? Find(IHardware? hardware, SensorType type, string name) =>

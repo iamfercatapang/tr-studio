@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="TR Studio">
+<defs>
+<linearGradient id="tile" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1C1636"/><stop offset="1" stop-color="#0A0812"/></linearGradient>
+<radialGradient id="glow"><stop offset="0" stop-color="#8B5CFF" stop-opacity="0.27"/><stop offset="1" stop-color="#8B5CFF" stop-opacity="0"/></radialGradient>
+<linearGradient id="brand" gradientUnits="userSpaceOnUse" x1="47.998" y1="68.716" x2="921.227" y2="859.644"><stop offset="0" stop-color="#00E5FF"/><stop offset="0.55" stop-color="#8B5CFF"/><stop offset="1" stop-color="#FF3DD8"/></linearGradient>
+</defs>
+<rect width="1024" height="1024" rx="230.4" fill="url(#tile)"/>
+<circle cx="512" cy="512" r="409.6" fill="url(#glow)"/>
+<rect x="8" y="8" width="1008" height="1008" rx="222.4" fill="none" stroke="#3A2F63" stroke-width="16"/>
+<g transform="translate(159.663 174.519) scale(0.727)" fill="url(#brand)"><rect x="49.224" y="68.716" width="869.237" height="96.335"/><rect x="223.333" y="145.184" width="696.117" height="96.335"/><rect x="47.998" y="144.979" width="96.335" height="250.572"/><rect x="129.883" y="144.979" width="96.335" height="250.572"/><rect x="49.224" y="355.084" width="394.417" height="96.335"/><rect x="223.333" y="298.24" width="195.94" height="96.335"/><rect x="302.513" y="298.246" width="96.334" height="561.398"/><rect x="354.724" y="298.246" width="96.335" height="561.398"/><path fill-rule="evenodd" d="M921.227 859.457L838.634 702.696L921.227 702.696L921.227 297.313L498.989 297.313L498.989 859.457L639.735 859.457L639.735 702.696L700.415 702.696L780.481 859.457ZM780.481 574.594L639.735 574.594L639.735 426.262L780.481 426.262Z"/></g>
+</svg>

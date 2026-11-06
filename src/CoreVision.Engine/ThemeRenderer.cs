@@ -111,10 +111,22 @@ public sealed partial class ThemeRenderer : IDisposable
         _frameSeconds = _sinceRender.Elapsed.TotalSeconds;
         _sinceRender.Restart();
         IsAnimating = false;
+        _screenTransform?.Dispose();
+        _screenTransform = g.Transform;
         var capturesUsed = new HashSet<CaptureKey>();
         for (var i = 0; i < elements.Count; i++)
         {
             if (elements[i].Hidden) continue;
+            // Bars and shapes turn inside their own drawing; everything else is turned here, around its pivot.
+            GraphicsState? turned = null;
+            if (elements[i].Rotation % 360 != 0 && elements[i].Kind is not (ElementKind.Bar or ElementKind.Shape))
+            {
+                turned = g.Save();
+                var pivot = Pivot(elements[i]);
+                g.TranslateTransform(pivot.X, pivot.Y);
+                g.RotateTransform(elements[i].Rotation);
+                g.TranslateTransform(-pivot.X, -pivot.Y);
+            }
             if (elements[i].Kind == ElementKind.Gauge) DrawGauge(g, i, elements[i], stats);
             else if (elements[i].Kind == ElementKind.Bar) DrawBar(g, i, elements[i], stats);
             else if (elements[i].Kind == ElementKind.Shape) DrawShape(g, elements[i]);
@@ -122,6 +134,7 @@ public sealed partial class ThemeRenderer : IDisposable
             else if (elements[i].Kind == ElementKind.Music) DrawMusic(g, elements[i], media);
             else if (elements[i].Kind == ElementKind.Weather) DrawWeather(g, elements[i], weather);
             else Draw(g, elements[i], stats, now);
+            if (turned != null) g.Restore(turned);
         }
         foreach (var key in _captures.Keys.Where(key => !capturesUsed.Contains(key)).ToList())
         {
@@ -133,6 +146,20 @@ public sealed partial class ThemeRenderer : IDisposable
         if (alerts is { Count: > 0 }) DrawAlert(g, alerts, now, scale);
         return JpegFrame.Encode(_canvas, _quality);
     }
+
+    /// <summary>A text layer's line box is this many times its size tall. The Editor's handles use the same.</summary>
+    public const float TextLineShare = 1.35f;
+
+    /// <summary>
+    /// The point a layer turns around: the center for everything placed by its center, and for text the anchor
+    /// (left edge, middle or right edge, as aligned) halfway down the line, so changing digits never move it.
+    /// </summary>
+    public static PointF Pivot(ElementSpec element) => element.Kind is ElementKind.Metric or ElementKind.Text or ElementKind.Clock or ElementKind.Date
+        ? new PointF(element.X, element.Y + Math.Clamp(element.Size, 8f, 300f) * TextLineShare / 2)
+        : new PointF(element.X, element.Y);
+
+    /// <summary>The screen's own transform, for parts drawn along the screen edge whatever their layer's rotation.</summary>
+    Matrix? _screenTransform;
 
     /// <summary>True when the theme shows a reading from the PC's sensors, as text, a gauge or a bar.</summary>
     public static bool UsesSensors(IReadOnlyList<ElementSpec> elements) =>
@@ -767,6 +794,7 @@ public sealed partial class ThemeRenderer : IDisposable
         _fadeFrom?.Dispose();
         foreach (var capture in _captures.Values) capture.Dispose();
         _artImage?.Dispose();
+        _screenTransform?.Dispose();
         foreach (var (family, _) in _fonts.Values) family.Dispose();
     }
 }

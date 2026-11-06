@@ -151,7 +151,13 @@ public sealed partial class ThemeRenderer
             case ProgressStyle.Line: DrawLineProgress(g, layout.Bar, share, track, fill); break;
             case ProgressStyle.Segments: DrawSegments(g, layout.Bar, share, track, fill); break;
             case ProgressStyle.AroundArt: DrawArtRing(g, element, layout, share, track, fill); break;
-            case ProgressStyle.ScreenEdge: DrawScreenEdge(g, share, track, fill); break;
+            case ProgressStyle.ScreenEdge:
+                // It follows the screen's edge, so the widget's rotation doesn't apply to it.
+                var turned = g.Save();
+                if (_screenTransform != null) g.Transform = _screenTransform;
+                DrawScreenEdge(g, share, track, fill);
+                g.Restore(turned);
+                break;
             default: DrawBar(g, layout.Bar, share, track, fill); break;
         }
 

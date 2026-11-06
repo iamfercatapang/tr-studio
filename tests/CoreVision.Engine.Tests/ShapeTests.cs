@@ -220,3 +220,52 @@ public sealed class ShapeTests
         Assert.True(renderer.IsAnimating);
     }
 }
+
+public sealed class LayerRotationTests
+{
+    static Bitmap Render(ElementSpec element)
+    {
+        using var background = Backgrounds.Create(new BackgroundSpec(BackgroundKind.Color, "#000000"));
+        using var renderer = new ThemeRenderer();
+        return new Bitmap(new MemoryStream(renderer.Render(background, [element], Stats.Empty, DateTime.Now)));
+    }
+
+    static bool AnyLit(Bitmap bitmap, int x, int y)
+    {
+        for (var dx = -5; dx <= 5; dx++)
+            for (var dy = -5; dy <= 5; dy++)
+                if (bitmap.GetPixel(x + dx, y + dy) is var pixel && pixel.R + pixel.G + pixel.B > 300) return true;
+        return false;
+    }
+
+    static readonly ElementSpec Word = new(ElementKind.Text, 240, 200, 40) { Text = "WWWWWW", Align = TextAlign.Center, Bold = true };
+
+    [Fact]
+    public void Text_turns_around_the_middle_of_its_line()
+    {
+        var pivot = ThemeRenderer.Pivot(Word);
+        Assert.Equal(new PointF(240, 227), pivot);
+
+        using var flat = Render(Word);
+        Assert.True(AnyLit(flat, 160, 227));
+        Assert.False(AnyLit(flat, 240, 147));
+
+        using var upright = Render(Word with { Rotation = 90 });
+        Assert.True(AnyLit(upright, 240, 147));
+        Assert.False(AnyLit(upright, 160, 227));
+    }
+
+    [Fact]
+    public void Gauges_turn_around_their_center()
+    {
+        // A quarter ring on the right side, from 315 to 45 degrees, ends up at the bottom when turned 90 degrees.
+        var gauge = new ElementSpec(ElementKind.Gauge, 240, 240, 300) { StartAngle = 315, Sweep = 90, Thickness = 20, Color = "#FFFFFF", EndColor = "#FFFFFF", TrackColor = "#FFFFFF", Dot = false };
+        using var flat = Render(gauge);
+        Assert.True(AnyLit(flat, 380, 240));
+        Assert.False(AnyLit(flat, 240, 380));
+
+        using var turned = Render(gauge with { Rotation = 90 });
+        Assert.True(AnyLit(turned, 240, 380));
+        Assert.False(AnyLit(turned, 380, 240));
+    }
+}

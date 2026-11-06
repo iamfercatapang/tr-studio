@@ -25,6 +25,8 @@ OutputBaseFilename=TRStudio-{#AppVersion}-Setup
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
+; Drawn by tools\MakeIcon.ps1. Setup picks the size that suits the screen's scaling.
+WizardSmallImageFile=wizard-small-55.bmp,wizard-small-83.bmp,wizard-small-110.bmp,wizard-small-138.bmp
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; Flags: unchecked

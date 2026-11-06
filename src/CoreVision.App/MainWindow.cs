@@ -222,6 +222,12 @@ sealed class MainWindow : Form
                 case "autoUpdate":
                     _app.SetAutomaticUpdates((bool?)message["enabled"] == true);
                     break;
+                case "listFans":
+                    _app.SendFans();
+                    break;
+                case "setFans":
+                    _app.SetFans(new FanChoice((string?)message["pump"], (string?)message["cpuFan"], (string?)message["caseFan"]));
+                    break;
                 case "listCaptureSources":
                     _ = ListCaptureSourcesAsync();
                     break;
