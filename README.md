@@ -106,7 +106,7 @@ dotnet build CoreVisionStudio.sln -c Release
 dotnet test tests/CoreVision.Engine.Tests
 ```
 
-Building the installer also takes [Inno Setup 6](https://jrsoftware.org/isinfo.php), plus `ffmpeg.exe` from an [LGPL build](https://github.com/BtbN/FFmpeg-Builds/releases) placed in `third-party/ffmpeg/`. FFmpeg isn't stored in this repository.
+Building the installer also takes [Inno Setup 6](https://jrsoftware.org/isinfo.php), plus `ffmpeg.exe` from an [LGPL build](https://github.com/BtbN/FFmpeg-Builds/releases) placed in `third-party/ffmpeg/`, and [PawnIO 2.2.0](https://github.com/namazso/PawnIO.Setup/releases/tag/2.2.0)'s `PawnIO_setup.exe` with its [COPYING](https://github.com/namazso/PawnIO/blob/master/COPYING) saved as `PawnIO-LICENSE.txt` in `third-party/pawnio/`. Neither is stored in this repository.
 
 ```bash
 pwsh tools/BuildInstaller.ps1
@@ -145,4 +145,4 @@ TR Studio uses the internet for three things only:
 
 ## License
 
-TR Studio is released under the [MIT License](LICENSE). The installer also includes FFmpeg, which keeps its own LGPL license, installed as `ffmpeg-LICENSE.txt`. LibreHardwareMonitor is used under the MPL 2.0.
+TR Studio is released under the [MIT License](LICENSE). The installer also includes FFmpeg, which keeps its own LGPL license, installed as `ffmpeg-LICENSE.txt`, and offers to install the [PawnIO](https://pawnio.eu/) driver, which keeps its own GPL-2.0 license (`PawnIO-LICENSE.txt`, source at [namazso/PawnIO](https://github.com/namazso/PawnIO)). LibreHardwareMonitor is used under the MPL 2.0.

@@ -30,15 +30,21 @@ WizardSmallImageFile=wizard-small-55.bmp,wizard-small-83.bmp,wizard-small-110.bm
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; Flags: unchecked
+; The sensor library reads CPU temperature, clock and power and the motherboard's fans through PawnIO.
+; Offered only when it's missing; an update keeps the choice made at first install.
+Name: "pawnio"; Description: "Install the PawnIO driver, for CPU temperature and fan speeds"; Check: not HasPawnIO
 
 [Files]
 Source: "..\artifacts\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\third-party\pawnio\PawnIO_setup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall; Tasks: pawnio; Check: not HasPawnIO
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExe}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
 
 [Run]
+; PawnIO's own signed setup, unchanged. It's shared with other monitoring apps, so uninstalling TR Studio leaves it.
+Filename: "{tmp}\PawnIO_setup.exe"; Parameters: "-install -silent"; StatusMsg: "Installing the PawnIO driver..."; Flags: waituntilterminated runhidden; Tasks: pawnio; Check: not HasPawnIO
 Filename: "{app}\{#AppExe}"; Description: "Start {#AppName}"; Flags: nowait postinstall skipifsilent runascurrentuser
 ; An update from inside the app runs silently, so this opens the app again when it is done.
 Filename: "{app}\{#AppExe}"; Flags: nowait runascurrentuser; Check: IsUpdate
@@ -80,6 +86,12 @@ begin
       Exit;
     end;
   Result := True;
+end;
+
+{ PawnIO's setup registers itself under this key; LibreHardwareMonitor checks the same one. }
+function HasPawnIO(): Boolean;
+begin
+  Result := RegKeyExists(HKLM, 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\PawnIO');
 end;
 
 function HasWebView2(): Boolean;
