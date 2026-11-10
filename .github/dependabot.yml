@@ -1,0 +1,25 @@
+# Weekly update PRs for the NuGet packages. Security fixes come as their own PRs as soon as an alert opens.
+# Minor and patch updates are grouped into one PR a week, so a solo maintainer isn't flooded.
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: "/"
+    target-branch: Dev
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: deps
+    groups:
+      nuget-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # Sensor library updates change sensor names and drivers (0.9.5 swapped WinRing0 for PawnIO),
+      # so they're done by hand and tested on real hardware, not merged from a bot PR.
+      - dependency-name: LibreHardwareMonitorLib
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
