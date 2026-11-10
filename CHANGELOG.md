@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.1 (Nov 10, 2026)
+
+- **GPU stats on PCs with built-in graphics and a graphics card.** TR Studio read whichever GPU came first, often the processor's idle built-in graphics, so temperature, power and fan showed a dash and load sat at 0%. It now reads the graphics card. AMD cards also show memory temperature, power and fan speed, which were missing because AMD names those sensors differently. The log lists every GPU found and which one is read.
+- **Choose the GPU in Settings.** On a PC with more than one GPU, a new Graphics Card section picks which one the GPU stats come from. Automatic, the default, reads the graphics card.
+
 ## 1.6.0 (Nov 7, 2026)
 
 - **Select several layers in the Editor and move, resize or rotate them together.** Ctrl-click or Shift-click layers on the screen or in Layers, or drag a box across empty screen. A box appears around the selection: drag a corner to resize everything in it (Alt resizes from the middle), or the round handle above it to rotate (Shift snaps to 15°). A single layer gets the same box.

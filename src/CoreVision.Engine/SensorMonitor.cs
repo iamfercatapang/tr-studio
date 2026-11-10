@@ -32,6 +32,9 @@ public sealed record RawStats(
 {
     /// <summary>Every fan header on the motherboard, for choosing which one is the pump in Settings.</summary>
     public IReadOnlyList<FanHeader> Fans { get; init; } = [];
+
+    /// <summary>Every GPU found, for choosing which one to read in Settings when there's more than one.</summary>
+    public IReadOnlyList<GpuInfo> Gpus { get; init; } = [];
 }
 
 public sealed record Stats(
@@ -54,6 +57,9 @@ public sealed record Stats(
 
     /// <summary>Every fan header on the motherboard, as last read. Empty once readings turn stale.</summary>
     public IReadOnlyList<FanHeader> Fans { get; init; } = [];
+
+    /// <summary>Every GPU found. Kept when readings turn stale, since the cards don't go anywhere.</summary>
+    public IReadOnlyList<GpuInfo> Gpus { get; init; } = [];
 
     /// <summary>Video memory in use, in GB.</summary>
     public Reading GpuMemoryUsed { get; init; } = new(null, ReadingState.Missing);
@@ -108,6 +114,7 @@ public sealed record Stats(
     {
         GpuMemoryUsed = Reading.Check(raw.GpuMemoryUsed / 1024, 0, MaxGpuMemoryGb), // the sensor reports MB
         Fans = raw.Fans,
+        Gpus = raw.Gpus,
     };
 
     public Stats AsStale() => new(
@@ -120,6 +127,7 @@ public sealed record Stats(
         MemoryUsed.AsStale(), MemoryAvailable.AsStale(), MemorySpeed.AsStale())
     {
         GpuMemoryUsed = GpuMemoryUsed.AsStale(),
+        Gpus = Gpus,
     };
 
     public static Stats Empty { get; } = From(new RawStats());

@@ -22,7 +22,7 @@ void Update()
 static void Print(IHardware hardware, string indent)
 {
     Console.WriteLine($"{indent}{hardware.HardwareType}: {hardware.Name}");
-    foreach (var sensor in hardware.Sensors.Where(s => s.SensorType is SensorType.Temperature or SensorType.Load or SensorType.Power or SensorType.Fan or SensorType.Clock))
+    foreach (var sensor in hardware.Sensors.Where(s => s.SensorType is SensorType.Temperature or SensorType.Load or SensorType.Power or SensorType.Fan or SensorType.Clock or SensorType.SmallData))
         Console.WriteLine($"{indent}  {sensor.SensorType,-12} {sensor.Name,-32} {(sensor.Value?.ToString("F1") ?? "null")}");
     foreach (var sub in hardware.SubHardware) Print(sub, indent + "  ");
 }
