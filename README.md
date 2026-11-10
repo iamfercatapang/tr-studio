@@ -133,7 +133,7 @@ The interface uses the GothamSSm font when it's installed, and Segoe UI otherwis
 
 ## Getting help
 
-Found a bug? In TR Studio, open **Settings → Help & Feedback → Report a Problem**. It opens a [bug report form](https://github.com/iamfercatapang/tr-studio/issues/new/choose) with your versions filled in. **Open Log Folder** shows `engine.log`, which you can attach. Questions and ideas go in [Discussions](https://github.com/iamfercatapang/tr-studio/discussions).
+Found a bug? In TR Studio, open **Settings → Help & Feedback → Report a Problem**. It opens a [bug report form](https://github.com/iamfercatapang/tr-studio/issues/new/choose) with your versions filled in. **Open Log Folder** shows `engine.log`, which you can attach. Questions and ideas go in [Discussions](https://github.com/iamfercatapang/tr-studio/discussions). Security problems go through a private report instead; see [SECURITY.md](SECURITY.md).
 
 ## Privacy
 

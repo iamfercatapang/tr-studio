@@ -3,3 +3,6 @@ contact_links:
   - name: Ask a question
     url: https://github.com/iamfercatapang/tr-studio/discussions
     about: Not sure something is a bug, or want help setting TR Studio up? Ask in Discussions.
+  - name: Report a security problem
+    url: https://github.com/iamfercatapang/tr-studio/security/advisories/new
+    about: Report it privately here instead of in a public issue. See SECURITY.md.
