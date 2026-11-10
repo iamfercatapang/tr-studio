@@ -67,6 +67,7 @@ sealed class TrayContext : ApplicationContext
         _updates = new UpdateService(_settings.CheckForUpdates, Log);
         _updates.Changed += () => _ui.Post(_ => SendUpdate(), null);
         _updates.Installing += () => _ui.Post(_ => Quit(), null);
+        Log(HasPawnIO() ? "PawnIO driver installed" : "PawnIO driver missing: CPU temperature, clock and power and motherboard fans can't be read");
         _sensors = new SensorMonitor(() => new LibreSensorSource(() => _settings.Fans ?? new FanChoice(), Log, () => _settings.Gpu), log: Log);
         _sensors.Start();
         _link = new ScreenLink(() => ScreenFinder.Open(() => ScreenFinder.OpenFirst(ScreenDevice.All, model => WinUsbDevice.Open(model)),
@@ -165,6 +166,20 @@ sealed class TrayContext : ApplicationContext
         });
     }
 
+    /// <summary>
+    /// The sensor library reads CPU temperature, clock and power and the motherboard's fans through the PawnIO
+    /// driver. The installer offers it; this is the key its setup registers, the same one the library checks.
+    /// </summary>
+    static bool HasPawnIO()
+    {
+        try
+        {
+            using var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\PawnIO");
+            return key != null;
+        }
+        catch (Exception e) when (e is System.Security.SecurityException or UnauthorizedAccessException or IOException) { return false; }
+    }
+
     /// <summary>The first read can take a few seconds, so the page gets it whenever it's done.</summary>
     public void SendSystemSpecs()
     {
@@ -175,7 +190,7 @@ sealed class TrayContext : ApplicationContext
                 ["label"] = row.Label,
                 ["values"] = new JsonArray(row.Values.Select(value => (JsonNode?)value).ToArray()),
             }).ToArray());
-            _ui.Post(_ => _window?.Post(new JsonObject { ["type"] = "system", ["rows"] = rows }), null);
+            _ui.Post(_ => _window?.Post(new JsonObject { ["type"] = "system", ["rows"] = rows, ["sensorDriver"] = HasPawnIO() }), null);
         }, TaskContinuationOptions.OnlyOnRanToCompletion);
     }
 

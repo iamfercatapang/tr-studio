@@ -1,17 +1,20 @@
 # TR Studio design system
 
-The app's look is OLED dark with a cyberpunk accent set: true black, violet-tinted panels, neon cyan, violet and magenta, and a soft mesh gradient behind the pages. It was chosen with the ui-ux-pro-max skill's Dark Mode (OLED), Cyberpunk UI and Gradient Mesh styles.
+The app's look is OLED dark with a cyberpunk accent set: true black, violet-tinted panels, neon cyan, violet and magenta. It was chosen with the ui-ux-pro-max skill's Dark Mode (OLED), Cyberpunk UI and Gradient Mesh styles, then quieted on Nov 10, 2026 with the unslop skill: one faint cyan light at the top instead of a color mesh, no glows in the chrome, and the brand gradient kept for the primary action only.
 
 Every value lives as a token on `:root` in [app.css](../src/CoreVision.App/wwwroot/app.css). New UI uses these tokens; don't add raw colors or a second theme system.
 
 ## Rules
 
-- **Data sits on solid panels.** The mesh gradient goes behind the pages only, never behind readings, gauges or form fields.
-- **The brand gradient marks one thing at a time:** the primary action (Save), the selected layer, switches that are on, and the playlist order badges. Text on it uses `--on-accent`.
-- **Cyan glow marks "current":** the active nav item, the theme on screen, the selected canvas item, the playing playlist row.
+- **Data sits on solid panels.** The faint backdrop light (`--mesh`) goes behind the pages only, never behind readings, gauges or form fields.
+- **The brand gradient marks the primary action only:** Save and Update. Text on it uses `--on-accent`. Switches that are on and the playlist order badges are solid `--accent`.
+- **A cyan line marks "current":** a 2px `--accent` bar on the active nav item and the selected layer, and a `--accent` ring on the theme on screen, the selected canvas item and the playing playlist row. No glow.
+- **One glow in the app:** `--glow-screen` around the cooler screen preview (Themes and Editor), lit like the real LCD. The only other light is the green "Screen connected" dot.
+- **Weights are 400 and 500.** Headings use size for hierarchy; 600 is for readings and text on the brand gradient. No uppercase tracked labels; the wordmark is plain "TR Studio".
+- **Spacing is on the 4px grid** from the `--space-*` tokens; panels pad 20, settings cards 16 × 20.
 - **Red is for warnings only.** Use `--danger` for marks and `--danger-text` for text.
 - **Readings use the mono font** (`--font-mono`, Cascadia Mono with Consolas as fallback). Names and labels stay in `--font-sans`.
-- **Glow stays small.** No glitch, scanline or animated mesh effects; the app is a monitoring tool and runs all day.
+- **No glitch, scanline or animated effects.** The app is a monitoring tool and runs all day.
 - **No web fonts.** The WebView's CSP only allows `'self'`, and the app works offline.
 
 ## Tokens
@@ -21,11 +24,11 @@ Every value lives as a token on `:root` in [app.css](../src/CoreVision.App/wwwro
 | Surfaces | `--bg` #000000, `--surface` #0c0a16, `--surface-raised` #18142b, `--surface-hover` #231d3e, `--surface-active` #2e2752, `--sidebar`, `--sidebar-solid`, `--overlay`, `--scrim` |
 | Lines | `--hairline`, `--hairline-strong`, `--track`, `--edge` (inset hairline shadow) |
 | Text | `--text` #f3f0ff, `--text-secondary` #aaa3cc |
-| Brand | `--accent` #00e5ff, `--accent-2` #ff3dd8, `--accent-3` #8b5cff, `--on-accent` #06020e, `--accent-soft`, `--gradient-brand`, `--gradient-nav` |
+| Brand | `--accent` #00e5ff, `--accent-2` #ff3dd8, `--accent-3` #8b5cff, `--on-accent` #06020e, `--accent-soft`, `--gradient-brand` |
 | Status | `--ok` #3dff9a, `--warn` #ffb224, `--danger` #ff4d73, `--danger-text` #ff8fa8, `--danger-soft`, `--danger-line` |
 | Data | `--data-cool`, `--data-ok`, `--data-warm`, `--data-hot`, `--data-violet`, `--data-blue`, `--gradient-heat`, `--gradient-load` |
 | Backdrop | `--mesh` |
-| Depth | `--shadow-sm`, `--shadow-md`, `--shadow-lg`, `--glow-accent`, `--glow-brand`, `--glow-danger`, `--glow-screen` |
+| Depth | `--shadow-sm`, `--shadow-md`, `--shadow-lg`, `--glow-screen` |
 | Shape | `--radius` 14, `--radius-md` 10, `--radius-sm` 8, `--radius-xs` 6 |
 | Spacing | `--space-1` to `--space-8`: 4, 8, 12, 16, 20, 24, 32, 40 px |
 | Type | `--font-sans`, `--font-mono` |
@@ -50,6 +53,6 @@ The app has a dark mode only.
 ## Still literal
 
 - The color picker's square, hue bar and white thumbs, which must show exact colors.
-- The switch knob's thin dark outline and the loading spinner's glow.
+- The switch knob's thin dark outline and the green connected dot's light.
 - The high-contrast override values (they're values for existing tokens).
 - Control heights and small paddings, such as 32px buttons. Page, panel and gap spacing use the scale.

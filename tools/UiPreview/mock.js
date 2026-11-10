@@ -206,7 +206,7 @@ window.chrome.webview = {
         { label: 'Memory', values: ['32 GB DDR4-3200 (2 × 16 GB) CMK32GX4M2E3200C16'] },
         { label: 'Storage', values: ['Samsung SSD 980 PRO 1TB, 1 TB', 'WD Blue, 2 TB'] },
         { label: 'Operating System', values: ['Windows 11 Pro 25H2 (Build 26300)'] },
-      ] }), 500);
+      ], sensorDriver: !new URLSearchParams(location.search).has('nopawnio') }), 500); // open with ?nopawnio to see the driver note
     }
     // Fan headers named the way MSI boards name them, with speeds that wobble like live ones.
     const fanHeaders = () => [

@@ -481,11 +481,18 @@ function beginPanelDrag(event, panel) {
   panel.addEventListener('pointercancel', end);
 }
 
-function renderSpecs(rows) {
+function renderSpecs(rows, sensorDriver) {
   $('specs').replaceChildren(...rows.map(({ label, values }) => element('div', {},
     element('dt', { textContent: label }),
     ...values.map((value) => element('dd', { textContent: value })))));
-  document.querySelector('[data-panel="pc"]').hidden = rows.length === 0;
+  const panel = document.querySelector('[data-panel="pc"]');
+  panel.hidden = rows.length === 0;
+  panel.querySelector('.spec-note')?.remove();
+  // false only when the app checked and found no PawnIO; older messages without the field show nothing.
+  if (sensorDriver === false) {
+    panel.append(element('p', { className: 'spec-note', textContent:
+      'CPU temperature, clock and power and the fan speeds need the PawnIO driver. Run the TR Studio installer again and keep “Install the PawnIO driver” ticked.' }));
+  }
 }
 
 function paintGauge({ fill, ring }, percent) {
@@ -3131,7 +3138,7 @@ const handlers = {
     $('pickerHint').hidden = true;
     if (message.color && picker.apply) setPickerHex(message.color);
   },
-  system(message) { renderSpecs(message.rows); },
+  system(message) { renderSpecs(message.rows, message.sensorDriver); },
   showing(message) {
     app.draft = null; // the Editor must open what is on screen now
     app.current = message.current;

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.2 (Nov 10, 2026)
+
+- **CPU temperature and fan speeds on every PC.** The sensor library now reads the CPU's temperature, clock and power and the motherboard's fans through the PawnIO driver, which many PCs don't have, so those showed a dash. The installer now installs PawnIO when it's missing (a box you can untick), and an update from inside the app installs it too. If it's still missing, Metrics says so and the log notes it.
+- **A calmer look.** The color wash behind the pages and the glows around buttons, switches and selections are gone, so the cooler screen preview is the one thing that lights up. The selected layer and switches use plain cyan, the TR Studio name is plain text, headings are lighter, and spacing is evened out across every page. The CPU panel's readings now sit right under its gauges.
+
 ## 1.6.1 (Nov 10, 2026)
 
 - **GPU stats on PCs with built-in graphics and a graphics card.** TR Studio read whichever GPU came first, often the processor's idle built-in graphics, so temperature, power and fan showed a dash and load sat at 0%. It now reads the graphics card. AMD cards also show memory temperature, power and fan speed, which were missing because AMD names those sensors differently. The log lists every GPU found and which one is read.
