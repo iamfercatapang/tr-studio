@@ -220,6 +220,14 @@ window.chrome.webview = {
     };
     if (message.type === 'listFans') fans();
     if (message.type === 'setFans') { const { type, ...choice } = message; window.mock.fans = choice; fans(); }
+    // A Ryzen's built-in graphics listed before the graphics card, as on the PC in the GPU bug report.
+    // Set window.mock.singleGpu = true to see Settings without the picker.
+    const gpus = () => emit({ type: 'gpus', picked: window.mock.gpu ?? null, gpus: [
+      { id: '/gpu-amd/0', name: 'AMD Radeon(TM) Graphics', memoryGb: 0.5, automatic: false },
+      { id: '/gpu-amd/1', name: 'AMD Radeon RX 9070 XT', memoryGb: 15.9, automatic: true },
+    ].slice(window.mock.singleGpu ? 1 : 0) });
+    if (message.type === 'listGpus') gpus();
+    if (message.type === 'setGpu') { window.mock.gpu = message.id; gpus(); }
     if (message.type === 'pickRegion') setTimeout(() => emit({ type: 'region', x: 100, y: 100, width: 800, height: 450 }), 50);
     if (message.type === 'listCaptureSources') {
       const thumb = (color, width, height) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}"><rect width="100%" height="100%" fill="${color}"/></svg>`)}`;

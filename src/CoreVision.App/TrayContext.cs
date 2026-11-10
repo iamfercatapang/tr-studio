@@ -67,7 +67,7 @@ sealed class TrayContext : ApplicationContext
         _updates = new UpdateService(_settings.CheckForUpdates, Log);
         _updates.Changed += () => _ui.Post(_ => SendUpdate(), null);
         _updates.Installing += () => _ui.Post(_ => Quit(), null);
-        _sensors = new SensorMonitor(() => new LibreSensorSource(() => _settings.Fans ?? new FanChoice()), log: Log);
+        _sensors = new SensorMonitor(() => new LibreSensorSource(() => _settings.Fans ?? new FanChoice(), Log, () => _settings.Gpu), log: Log);
         _sensors.Start();
         _link = new ScreenLink(() => ScreenFinder.Open(() => ScreenFinder.OpenFirst(ScreenDevice.All, model => WinUsbDevice.Open(model)),
             WinUsbDevice.PresentUsbPaths), log: Log);
@@ -322,6 +322,29 @@ sealed class TrayContext : ApplicationContext
         _settings = _settings with { Fans = choice };
         SaveSettings();
         SendFans();
+    }
+
+    /// <summary>Settings shows the Graphics Card picker only when this lists more than one GPU.</summary>
+    public void SendGpus()
+    {
+        _window?.Post(new JsonObject
+        {
+            ["type"] = "gpus",
+            ["picked"] = _settings.Gpu,
+            ["gpus"] = new JsonArray(_sensors.Current.Gpus.Select(gpu => (JsonNode?)new JsonObject
+            {
+                ["id"] = gpu.Id, ["name"] = gpu.Name, ["automatic"] = gpu.Automatic,
+                ["memoryGb"] = gpu.MemoryTotal is { } mb && double.IsFinite(mb) && mb > 0 ? Math.Round(mb / 1024, 1) : null,
+            }).ToArray()),
+        });
+    }
+
+    /// <summary>Null goes back to picking the graphics card automatically.</summary>
+    public void SetGpu(string? id)
+    {
+        _settings = _settings with { Gpu = string.IsNullOrEmpty(id) ? null : id };
+        SaveSettings();
+        SendGpus();
     }
 
     /// <summary>Some screens report the wrong shape. Null goes back to what the screen reports.</summary>

@@ -271,7 +271,7 @@ function showPage(page) {
   });
   moveIndicator(true);
   send({ type: 'pausePlaylist', paused: page === 'editor' });
-  if (page === 'settings') send({ type: 'listFans' });
+  if (page === 'settings') { send({ type: 'listFans' }); send({ type: 'listGpus' }); }
   if (page === 'editor') {
     if (!app.draft) openEditor(clone(app.current), app.currentPath);
     fitStage();
@@ -885,6 +885,36 @@ function renderFans() {
       element('span', { className: 'fan-role-name' }, icon(role.iconName), element('span', { textContent: role.label })),
       input);
   }));
+}
+
+/* Graphics card. Shown only when the PC has more than one GPU, such as a processor's built-in graphics and a graphics card. */
+const AUTOMATIC_GPU = 'auto';
+
+const gpuText = (gpu) => (gpu.memoryGb ? `${gpu.name} · ${gpu.memoryGb} GB` : gpu.name);
+
+function renderGpus() {
+  const state = app.gpus;
+  if (!state) return;
+  const panel = $('gpuPanel');
+  panel.hidden = state.gpus.length < 2;
+  if (panel.hidden) return;
+  const list = $('gpuChoice');
+  const automatic = state.gpus.find((gpu) => gpu.automatic);
+  const value = state.gpus.some((gpu) => gpu.id === state.picked) ? state.picked : AUTOMATIC_GPU;
+  const key = [value, ...state.gpus.map((gpu) => `${gpu.id}:${gpuText(gpu)}:${gpu.automatic}`)].join('|');
+  if (list.dataset.key === key && list.children.length) return; // nothing changed, so an open dropdown stays open
+  list.dataset.key = key;
+  const options = [
+    element('option', { value: AUTOMATIC_GPU, textContent: automatic ? `Automatic · ${gpuText(automatic)}` : 'Automatic' }),
+    ...state.gpus.map((gpu) => element('option', { value: gpu.id, textContent: gpuText(gpu) })),
+  ];
+  const input = element('select', {}, ...options);
+  input.value = value;
+  input.setAttribute('aria-label', 'GPU to read');
+  input.addEventListener('change', () => send({ type: 'setGpu', id: input.value === AUTOMATIC_GPU ? null : input.value }));
+  list.replaceChildren(element('div', { className: 'alert-rule fan-role' },
+    element('span', { className: 'fan-role-name' }, icon('GraphicsCard'), element('span', { textContent: 'GPU stats from' })),
+    input));
 }
 
 function plainToggle(label, value, apply) {
@@ -3127,6 +3157,10 @@ const handlers = {
     app.captureSources = message;
     if ($('captureDialog').open) renderCaptureSources();
   },
+  gpus(message) {
+    app.gpus = message;
+    renderGpus();
+  },
   fans(message) {
     app.fans = message;
     renderFans();
@@ -3141,7 +3175,11 @@ function setStatus(status) {
 }
 
 host.addEventListener('message', (event) => handlers[event.data.type]?.(event.data));
-setInterval(() => { if (app.page === 'settings' && !document.hidden) send({ type: 'listFans' }); }, 2000);
+setInterval(() => {
+  if (app.page !== 'settings' || document.hidden) return;
+  send({ type: 'listFans' });
+  send({ type: 'listGpus' }); // GPUs can show up a moment after the sensors start
+}, 2000);
 
 document.querySelectorAll('.nav-item').forEach((node) => node.addEventListener('click', () => requestPage(node.dataset.page)));
 $('resetPanels').onclick = resetPanels;

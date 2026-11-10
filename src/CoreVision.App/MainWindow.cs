@@ -231,6 +231,12 @@ sealed class MainWindow : Form
                 case "setFans":
                     _app.SetFans(new FanChoice((string?)message["pump"], (string?)message["cpuFan"], (string?)message["caseFan"]));
                     break;
+                case "listGpus":
+                    _app.SendGpus();
+                    break;
+                case "setGpu":
+                    _app.SetGpu((string?)message["id"]);
+                    break;
                 case "listCaptureSources":
                     _ = ListCaptureSourcesAsync();
                     break;
