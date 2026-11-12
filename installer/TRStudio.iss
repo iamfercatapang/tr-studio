@@ -3,7 +3,7 @@
   #define AppVersion "1.4.1"
 #endif
 #define AppName "TR Studio"
-#define AppExe "CoreVision.App.exe"
+#define AppExe "TRStudio.exe"
 
 [Setup]
 AppId={{6F1C2C0E-5B7A-4C38-9E4D-2A7B91D3E7A1}
@@ -18,7 +18,7 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0.17763
 CloseApplications=yes
-SetupIconFile=..\src\CoreVision.App\app.ico
+SetupIconFile=..\src\TRStudio.App\app.ico
 UninstallDisplayIcon={app}\{#AppExe}
 OutputDir=..\artifacts
 OutputBaseFilename=TRStudio-{#AppVersion}-Setup
@@ -37,6 +37,16 @@ Name: "pawnio"; Description: "Install the PawnIO driver, for CPU temperature and
 [Files]
 Source: "..\artifacts\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\third-party\pawnio\PawnIO_setup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall; Tasks: pawnio; Check: not HasPawnIO
+
+[InstallDelete]
+; Up to 1.6.2 the program was CoreVision.App.exe. An update takes the old copy out so only TRStudio.exe is left.
+Type: files; Name: "{app}\CoreVision.App.exe"
+Type: files; Name: "{app}\CoreVision.App.dll"
+Type: files; Name: "{app}\CoreVision.App.pdb"
+Type: files; Name: "{app}\CoreVision.App.deps.json"
+Type: files; Name: "{app}\CoreVision.App.runtimeconfig.json"
+Type: files; Name: "{app}\CoreVision.Engine.dll"
+Type: files; Name: "{app}\CoreVision.Engine.pdb"
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExe}"

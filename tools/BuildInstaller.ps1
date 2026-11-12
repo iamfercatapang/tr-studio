@@ -21,13 +21,14 @@ if ((Get-FileHash "$pawnio\PawnIO_setup.exe" -Algorithm SHA256).Hash -ne $pawnio
 if ((Get-AuthenticodeSignature "$pawnio\PawnIO_setup.exe").Status -ne 'Valid') { throw 'PawnIO_setup.exe is not validly signed.' }
 
 if (Test-Path $publish) { Remove-Item $publish -Recurse -Force }
-dotnet publish (Join-Path $root 'src\CoreVision.App') -c Release -r win-x64 --self-contained true -o $publish --nologo
+dotnet publish (Join-Path $root 'src\TRStudio.App') -c Release -r win-x64 --self-contained true -o $publish --nologo
 if ($LASTEXITCODE -ne 0) { throw 'Publish failed.' }
 Copy-Item "$ffmpeg\*" $publish -Recurse
+Copy-Item (Join-Path $root 'LICENSE') (Join-Path $publish 'LICENSE.txt') # the GPL asks that every copy comes with the license
 Copy-Item "$pawnio\PawnIO-LICENSE.txt" $publish # the setup itself goes to the installer's temp folder, not the app folder
 
 # The installer takes the app's own version, so the in-app updater and the file name always agree.
-$version = ([xml](Get-Content (Join-Path $root 'src\CoreVision.App\CoreVision.App.csproj'))).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
-if (-not $version) { throw 'No <Version> in CoreVision.App.csproj.' }
+$version = ([xml](Get-Content (Join-Path $root 'src\TRStudio.App\TRStudio.App.csproj'))).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+if (-not $version) { throw 'No <Version> in TRStudio.App.csproj.' }
 & $compiler "/DAppVersion=$version" (Join-Path $root 'installer\TRStudio.iss')
 if ($LASTEXITCODE -ne 0) { throw 'Installer build failed.' }

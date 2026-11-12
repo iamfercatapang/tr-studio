@@ -1,6 +1,6 @@
 # Draws the TR mark everywhere it's used, from one set of shapes:
-#   src\CoreVision.App\app.ico             the app, tray, taskbar and installer icon
-#   src\CoreVision.App\wwwroot\logo.svg    the sidebar logo
+#   src\TRStudio.App\app.ico             the app, tray, taskbar and installer icon
+#   src\TRStudio.App\wwwroot\logo.svg    the sidebar logo
 #   docs\logo.svg                          the README logo
 #   installer\wizard-small-*.bmp           the installer's header image
 # Each icon size is drawn on its own, so the small ones stay sharp.
@@ -113,7 +113,7 @@ function Draw-Png([int] $size) {
 
 # The icon file: a directory of PNG frames.
 $frames = @($sizes | ForEach-Object { , (Draw-Png $_) })
-$stream = [IO.File]::Create((Join-Path $root 'src\CoreVision.App\app.ico'))
+$stream = [IO.File]::Create((Join-Path $root 'src\TRStudio.App\app.ico'))
 $writer = [IO.BinaryWriter]::new($stream)
 $writer.Write([uint16] 0)
 $writer.Write([uint16] 1)
@@ -166,6 +166,6 @@ $svg = @"
 <g transform="translate($(N $layout.X) $(N $layout.Y)) scale($(N $layout.Scale))" fill="url(#brand)">$rects<path fill-rule="evenodd" d="$(& $polygon $rOuter)$(& $polygon $rCounter)"/></g>
 </svg>
 "@
-foreach ($file in 'src\CoreVision.App\wwwroot\logo.svg', 'docs\logo.svg') {
+foreach ($file in 'src\TRStudio.App\wwwroot\logo.svg', 'docs\logo.svg') {
     [IO.File]::WriteAllText((Join-Path $root $file), $svg.Replace("`r`n", "`n") + "`n", [Text.UTF8Encoding]::new($false))
 }

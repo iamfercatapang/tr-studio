@@ -2,7 +2,7 @@
 
 The app's look is OLED dark with a cyberpunk accent set: true black, violet-tinted panels, neon cyan, violet and magenta. It was chosen with the ui-ux-pro-max skill's Dark Mode (OLED), Cyberpunk UI and Gradient Mesh styles, then quieted on Nov 10, 2026 with the unslop skill: one faint cyan light at the top instead of a color mesh, no glows in the chrome, and the brand gradient kept for the primary action only.
 
-Every value lives as a token on `:root` in [app.css](../src/CoreVision.App/wwwroot/app.css). New UI uses these tokens; don't add raw colors or a second theme system.
+Every value lives as a token on `:root` in [app.css](../src/TRStudio.App/wwwroot/app.css). New UI uses these tokens; don't add raw colors or a second theme system.
 
 ## Rules
 
@@ -53,6 +53,7 @@ The app has a dark mode only.
 ## Still literal
 
 - The color picker's square, hue bar and white thumbs, which must show exact colors.
+- The Lighting page's canvas, LED strips and effect tiles, which show the colors being sent to the hardware. The canvas and strips move because the lights do; the tiles are stills, and nothing else on the page animates. Strip boxes use a plain light outline so they read on any color, cyan when selected, striped when the device runs its own effect.
 - The switch knob's thin dark outline and the green connected dot's light.
 - The high-contrast override values (they're values for existing tokens).
 - Control heights and small paddings, such as 32px buttons. Page, panel and gap spacing use the scale.

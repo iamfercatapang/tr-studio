@@ -23,4 +23,4 @@ The source of `docs/screenshots/editor-demo.gif`, the animated hero at the top o
    third-party/ffmpeg/ffmpeg.exe -framerate 20 -i <frames-dir>/frame-%05d.png -vf "split[a][b];[a]palettegen=max_colors=256:stats_mode=diff[p];[b][p]paletteuse=dither=sierra2_4a:diff_mode=rectangle" -loop 0 docs/screenshots/editor-demo.gif
    ```
 
-The icons in `icons.tsx` and the colors in `trs.css` are copied from `src/CoreVision.App/wwwroot`. Update them here if the app's look changes.
+The icons in `icons.tsx` and the colors in `trs.css` are copied from `src/TRStudio.App/wwwroot`. Update them here if the app's look changes.

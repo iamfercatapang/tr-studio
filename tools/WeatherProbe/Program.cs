@@ -1,4 +1,4 @@
-using CoreVision.Engine;
+using TRStudio.Engine;
 
 // Usage: WeatherProbe <city> <output.jpg> [imperial]
 // Finds the city on Open-Meteo, fetches its forecast the way TR Studio does, and draws the Weather theme.

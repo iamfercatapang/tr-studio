@@ -7,6 +7,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\CoreVision.Engine\CoreVision.Engine.csproj" />
+    <ProjectReference Include="..\..\src\TRStudio.Engine\TRStudio.Engine.csproj" />
   </ItemGroup>
 </Project>

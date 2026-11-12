@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- The program file is TRStudio.exe; the code keeps the TRStudio.App namespace. -->
+    <AssemblyName>TRStudio</AssemblyName>
+    <RootNamespace>TRStudio.App</RootNamespace>
+    <ApplicationManifest Condition="'$(Configuration)' == 'Release'">app.manifest</ApplicationManifest>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <Version>1.7.0</Version>
+    <Product>TR Studio</Product>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TRStudio.Engine\TRStudio.Engine.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35" />
+    <PackageReference Include="Sentry" Version="6.12.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="wwwroot\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <EmbeddedResource Include="app.ico" LogicalName="app.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- ffmpeg for video backgrounds and their theme card stills, so builds run like the installed app. third-party isn't in git. -->
+    <None Include="..\..\third-party\ffmpeg\ffmpeg.exe" Link="ffmpeg.exe" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\third-party\ffmpeg\ffmpeg.exe')" />
+  </ItemGroup>
+</Project>

@@ -1,4 +1,4 @@
-// TR Studio's own icon set, copied from src/CoreVision.App/wwwroot/app.js (ICONS):
+// TR Studio's own icon set, copied from src/TRStudio.App/wwwroot/app.js (ICONS):
 // 16px viewBox, 1.5 stroke, round caps. The demo uses no other glyphs.
 const PATHS = {
   Metrics: '<path d="M1.5 8.5h3l2-5 3 9 2-4h3"/>',

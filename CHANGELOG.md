@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.7.0 (Nov 11, 2026)
+
+- **Lighting.** A new Lighting page sets the color and effects of your PC's RGB parts. Lighting is off until you turn it on, and nothing goes over the internet.
+- **ASUS Aura USB motherboards work by themselves.** TR Studio drives the board's RGB and addressable headers directly, so the fans and strips plugged into them light up with no other app running. The driver is ported from [OpenRGB](https://gitlab.com/CalcProgrammer1/OpenRGB).
+- **RGB memory, if you turn it on.** On AMD boards TR Studio can also drive RGB memory with an ENE lighting chip (XPG, G.Skill, T-Force and others) by itself, through the PawnIO driver it already installs. It is new and works on the bus the memory's own data chips use, so it is off until you switch on **Drive RGB Memory Directly** on the Lighting page. It needs TR Studio running as administrator. This driver is ported from OpenRGB too.
+- **ASRock Polychrome boards, if you turn it on.** A driver for the headers and onboard lights of ASRock boards with a Polychrome USB controller, ported from OpenRGB. Nobody has run it on a real board yet, so it is off until you switch on **Drive ASRock Polychrome Boards**. If you try it, please report how it goes.
+- **Graphics cards, if you turn it on.** TR Studio can drive the lights of many graphics cards by itself, over the card's own I2C bus through the NVIDIA driver: GALAX/KFA2, ASUS, MSI and Gigabyte cards, about 350 models from OpenRGB's list, with drivers ported from OpenRGB. The GALAX RTX 4070 EX Gamer is confirmed on real hardware; the other cards aren't yet, so this is off until you switch on **Drive Graphics Card RGB Directly**. AMD cards and other brands still come through OpenRGB. If you try it, please report how it goes.
+- **Everything else through OpenRGB.** Graphics cards, other brands of board and other memory appear on the page when [OpenRGB](https://openrgb.org/), a free app, is installed. TR Studio starts it and connects by itself, and the page walks you through it.
+- **A lighting canvas.** One effect is drawn on a canvas, and every strip of LEDs (a header, a memory stick, an onboard light) is a box you place on it. Each LED shows the color under its spot, so an effect travels across your PC in the order you laid the hardware out.
+- **Ten effects, each with its own settings**: Solid Color, Rainbow Wave, Color Cycle, Breathing, Gradient Flow, Aurora, Comet, Sweep, Radar and Ripple. Colors, speed, direction, trail, width and background are set per effect, and a grid of live tiles shows each one as you have set it.
+- **Layout.** Drag a strip to move it, pull its corner to size it, turn it with the knob above it (Shift snaps to 15°), nudge it with the arrow keys, or type exact numbers. Each strip has its own brightness, and the layout has one for everything.
+- **Fans and strips on one header.** List what is chained on a header, in order from the plug, and each part gets its own box: a ring for a fan, a line for a strip. Turn a ring to match where its first LED sits.
+- **Presets** for effect settings and for layouts.
+- **A device can leave the canvas**: set it to Off, or to one of the effects it runs by itself.
+- **Addressable headers.** A header can't count its LEDs, so each one has a box for how many are plugged in.
+- **More screens, experimental.** TR Studio now talks to two more kinds of Thermalright-style screen, worked out from TRCC without the hardware: HID screens (USB 0416:5302: Trofeo Vision LCD, Assassin Spirit 120 Vision, Frozen Warframe SE, 360 and Pro, AS120 and BA120 Vision) and small RGB565 screens (USB 0416:5406, such as the LC-series pump heads). Screens from other brands built on the same parts should work too. If you own one, please report how it goes.
+- **SCSI screens, experimental.** TR Studio now also drives the screens that Windows sees as a USB drive (USB 87CD:70DB on the Frozen Horizon Pro, Frozen Magic Pro and Frozen Vision V2, and USB 0402:3922 on the Frozen Warframe and Frozen Warframe 240), worked out from TRCC without the hardware. They need TR Studio running as administrator, as the installed app does. If you own one, please report how it goes.
+- The version now shows under TR Studio in the sidebar.
+- The program file is now `TRStudio.exe` instead of `CoreVision.App.exe`. Updating removes the old file, and your themes and settings stay where they are.
+- The Lighting page says when another lighting app, such as Armoury Crate or iCUE, is running, since two apps driving the same lights make them flicker.
+- RGB memory on Intel boards is new and nobody has confirmed it yet; AMD boards are tested.
+- Lights get their colors back after the PC wakes from sleep or OpenRGB restarts. After waking, TR Studio waits a few seconds for the hardware to come back, then sets every light again, including the size of each addressable header, so a header no longer stays on the board's own rainbow after waking. A light that goes back to its own effect is taken back within seconds, and a controller that stops answering no longer freezes every light.
+- Effects stay smooth while TR Studio sits in the tray. Windows had been slowing apps with no open window, which made RGB memory stutter.
+- **TR Studio is now licensed under the GPL, version 2 or later**, instead of MIT, so it can use OpenRGB's drivers. Versions up to 1.6.2 stay MIT. The installer now puts the license in the app folder.
+
 ## 1.6.2 (Nov 10, 2026)
 
 - **CPU temperature and fan speeds on every PC.** The sensor library now reads the CPU's temperature, clock and power and the motherboard's fans through the PawnIO driver, which many PCs don't have, so those showed a dash. The installer now installs PawnIO when it's missing (a box you can untick), and an update from inside the app installs it too. If it's still missing, Metrics says so and the log notes it.

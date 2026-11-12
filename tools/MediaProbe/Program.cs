@@ -1,4 +1,4 @@
-using CoreVision.Engine;
+using TRStudio.Engine;
 using Windows.Media.Control;
 
 // Lists every media session Windows knows about, to check what TR Studio can read.

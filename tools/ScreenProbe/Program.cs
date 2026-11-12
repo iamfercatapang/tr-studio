@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using System.Drawing;
-using CoreVision.Engine;
+using TRStudio.Engine;
 
 // Usage:
 //   ScreenProbe soak <seconds> [fps]      numbered frames through ScreenLink
@@ -32,7 +32,7 @@ switch (args.ElementAtOrDefault(0))
         var seconds = int.Parse(args[2]);
         using var sensors = new SensorMonitor(() => new LibreSensorSource());
         sensors.Start();
-        using var link = new ScreenLink(() => WinUsbDevice.Open(), log: Log);
+        using var link = new ScreenLink(() => ScreenFinder.OpenFirst(ScreenDevice.All, ScreenOpener.Open), log: Log);
         link.Start();
         var theme = Theme.Default with { Background = Spec(args[1]) };
         using var player = new ThemePlayer(theme, () => sensors.Current, link.Submit, spec => Backgrounds.Create(spec, ThemeStore.FindFfmpeg(), Log), Log);
@@ -53,7 +53,7 @@ switch (args.ElementAtOrDefault(0))
 
 void Soak(int seconds, int fps)
 {
-    using var link = new ScreenLink(() => WinUsbDevice.Open(), log: Log);
+    using var link = new ScreenLink(() => ScreenFinder.OpenFirst(ScreenDevice.All, ScreenOpener.Open), log: Log);
     link.Start();
     using var font = new Font("Segoe UI Semibold", 72f, GraphicsUnit.Pixel);
     using var centered = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };

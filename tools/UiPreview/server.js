@@ -3,7 +3,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const root = path.join(__dirname, '..', '..', 'src', 'CoreVision.App', 'wwwroot');
+const root = path.join(__dirname, '..', '..', 'src', 'TRStudio.App', 'wwwroot');
 const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml' };
 
 http.createServer((request, response) => {

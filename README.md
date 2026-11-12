@@ -63,6 +63,12 @@ With Blend With Theme on, picking a palette color on a gauge also recolors its b
 
 ![The color picker, with recent colors, the Ocean palette and Blend With Theme](docs/screenshots/color-picker.png)
 
+### Lighting
+
+The Lighting page controls your PC's RGB parts from the same app. One effect is drawn on a canvas, and each strip of LEDs is a box you place on it, so the effect crosses your PC the way your hardware is laid out. There are ten effects (Solid Color, Rainbow Wave, Color Cycle, Breathing, Gradient Flow, Aurora, Comet, Sweep, Radar and Ripple), each with its own settings, and you can save effect settings and layouts as presets. Drag a strip to move it, pull its corner to size it, and turn it with the knob above it. Any device can be set to Off or to one of its own built-in effects instead.
+
+TR Studio drives **ASUS Aura USB motherboards** by itself: the RGB and addressable headers, and so the fans and strips plugged into them, with nothing else running. It can also drive **RGB memory with an ENE lighting chip** (XPG, G.Skill, T-Force and others) through the PawnIO driver, tested on AMD boards and not yet confirmed on Intel ones; this is new, so it is off until you turn on Drive RGB Memory Directly on the Lighting page. A driver for **ASRock Polychrome USB boards** is included but has not been confirmed on a real board yet, so it is off until you turn it on as well; reports are welcome. **Graphics cards** from GALAX/KFA2, ASUS, MSI and Gigabyte can be driven directly through the NVIDIA driver once you turn on Drive Graphics Card RGB Directly; only the GALAX RTX 4070 EX Gamer is confirmed so far. AMD cards, other brands of board and anything else are added through [OpenRGB](https://openrgb.org/), a free app you install once; TR Studio starts it and connects by itself. Close other lighting apps such as Armoury Crate, Mystic Light or iCUE first, since two apps can't drive the same LEDs. Addressable headers can't count their LEDs, so the page has a box for how many are plugged into each one.
+
 ### Warnings
 
 TR Studio warns you if the AIO pump slows down or stops, or if the CPU or GPU gets too hot. You set each limit yourself on the Themes page, or turn a warning off. When a reading stays past its limit for a few seconds, the cooler screen shows the warning over your theme with a pulsing red ring, Windows shows a notification, and the app shows it in the sidebar. A sensor your PC doesn't report never sets one off.
@@ -84,9 +90,11 @@ TR Studio sits in the system tray, and the cooler keeps working after you close 
 
 Only one app can drive the screen at a time, so close TRCC before you start TR Studio.
 
+The Lighting page needs nothing extra on an ASUS Aura USB motherboard. For other lights, [OpenRGB](https://openrgb.org/) 0.9 or later; it's optional.
+
 ### Tested hardware
 
-I've only tested TR Studio on my own PC, with a Core Vision 360 and its 480×480 screen. The same protocol reports other screen sizes and the app has code for them, but I haven't been able to try any. Support for the Trofeo Vision 9.16" (1920×462) is experimental: it was worked out from TRCC without the screen, and themes show in the middle of the wide screen for now. If you own one, I'd love to hear whether it works.
+I've only tested TR Studio on my own PC, with a Core Vision 360 and its 480×480 screen. The same protocol reports other screen sizes and the app has code for them, but I haven't been able to try any. Support for the Trofeo Vision 9.16" (1920×462) is experimental: it was worked out from TRCC without the screen, and themes show in the middle of the wide screen for now. Screens on TRCC's HID (USB 0416:5302) and "ALi" (USB 0416:5406) modules are experimental too, worked out the same way: the Trofeo Vision LCD, Assassin Spirit 120 Vision, Frozen Warframe SE, 360 and Pro, AS120 and BA120 Vision, the LC-series pump heads, and other brands' screens built on the same modules. If you own one of these screens, I'd love to hear whether it works.
 
 ## Install
 
@@ -99,11 +107,11 @@ If you uninstall, your themes and settings stay in `C:\ProgramData\CoreVisionStu
 You'll need the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
 
 ```bash
-dotnet build CoreVisionStudio.sln -c Release
+dotnet build TRStudio.sln -c Release
 ```
 
 ```bash
-dotnet test tests/CoreVision.Engine.Tests
+dotnet test tests/TRStudio.Engine.Tests
 ```
 
 Building the installer also takes [Inno Setup 6](https://jrsoftware.org/isinfo.php), plus `ffmpeg.exe` from an [LGPL build](https://github.com/BtbN/FFmpeg-Builds/releases) placed in `third-party/ffmpeg/`, and [PawnIO 2.2.0](https://github.com/namazso/PawnIO.Setup/releases/tag/2.2.0)'s `PawnIO_setup.exe` with its [COPYING](https://github.com/namazso/PawnIO/blob/master/COPYING) saved as `PawnIO-LICENSE.txt` in `third-party/pawnio/`. Neither is stored in this repository.
@@ -118,16 +126,16 @@ The installer ends up in `artifacts/`.
 
 | Part | Purpose |
 | --- | --- |
-| `src/CoreVision.Engine` | USB protocol, sensors, theme rendering and storage |
-| `src/CoreVision.App` | Tray app, plus the WebView2 interface in `wwwroot` |
-| `tests/CoreVision.Engine.Tests` | Engine tests |
+| `src/TRStudio.Engine` | USB protocol, sensors, theme rendering and storage, lighting effects |
+| `src/TRStudio.App` | Tray app, plus the WebView2 interface in `wwwroot` |
+| `tests/TRStudio.Engine.Tests` | Engine tests |
 | `tools/` | Hardware probes, the browser interface preview and the build scripts |
 | `installer/` | Inno Setup script |
 | `docs/PROTOCOL.md` | Notes on the screen's USB protocol |
 
-A few internal names, like `CoreVision.App.exe`, come from the project's working title.
+A few names, like the `C:\ProgramData\CoreVisionStudio` folder, come from the project's working title and stay so that updates keep your themes and settings.
 
-[LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) reads the sensors, and [FFmpeg](https://ffmpeg.org/) decodes video.
+[LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) reads the sensors, and [FFmpeg](https://ffmpeg.org/) decodes video. The ASUS Aura USB, ENE memory and graphics card lighting drivers are ported from [OpenRGB](https://gitlab.com/CalcProgrammer1/OpenRGB), and other lights go through OpenRGB itself with [OpenRGB.NET](https://github.com/diogotr7/OpenRGB.NET).
 
 The interface uses the GothamSSm font when it's installed, and Segoe UI otherwise. The font isn't included.
 
@@ -143,6 +151,10 @@ TR Studio uses the internet for three things only:
 - **Update check**: asks GitHub for the latest release and sends nothing about your PC. You can turn it off in Settings.
 - **Crash reports**, only if you say yes when asked (off until then, and switchable in Settings): when TR Studio crashes, it sends the error, the app and Windows versions, the cooler model and the last lines of its log to [Sentry](https://sentry.io/). Your user name, PC name and user folders are taken out first.
 
+Lighting talks only to your hardware and to OpenRGB on your own PC.
+
 ## License
 
-TR Studio is released under the [MIT License](LICENSE). The installer also includes FFmpeg, which keeps its own LGPL license, installed as `ffmpeg-LICENSE.txt`, and offers to install the [PawnIO](https://pawnio.eu/) driver, which keeps its own GPL-2.0 license (`PawnIO-LICENSE.txt`, source at [namazso/PawnIO](https://github.com/namazso/PawnIO)). LibreHardwareMonitor is used under the MPL 2.0.
+TR Studio is free software under the [GNU General Public License, version 2 or later](LICENSE). Copyright (c) 2026 Fer Catapang. Versions up to 1.6.2 were released under the MIT License and stay under it; the license changed in 1.7.0 so TR Studio could use lighting drivers from [OpenRGB](https://gitlab.com/CalcProgrammer1/OpenRGB), which is GPL-2.0-or-later. The ASUS Aura USB, ASRock Polychrome USB, ENE memory and graphics card lighting drivers, the graphics card list, and the PawnIO SMBus and NvAPI I2C links are ported from OpenRGB, by Adam Honse, Martin Hartl, Ed Kambulow, Shady Nawara and the OpenRGB contributors. The PawnIO SMBus module they use is by namazso.
+
+The installer also includes FFmpeg, which keeps its own LGPL license, installed as `ffmpeg-LICENSE.txt`, and offers to install the [PawnIO](https://pawnio.eu/) driver, which keeps its own GPL-2.0 license (`PawnIO-LICENSE.txt`, source at [namazso/PawnIO](https://github.com/namazso/PawnIO)). LibreHardwareMonitor is used under the MPL 2.0.

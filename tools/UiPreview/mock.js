@@ -157,7 +157,7 @@ function state() {
     .filter((entry) => !removed.has(entry.path));
   theme = { ...theme };
   if (themes[0]) themes[0].thumb = render();
-  emit({ type: 'state', themes, current: theme, currentPath: window.mock.path, rotation: window.mock.rotation ?? 0, startup: window.mock.startup ?? false, removedDefaults: removed.size, playlist: window.mock.playlist ?? { enabled: false, paths: [], seconds: 30 }, alertSettings: window.mock.alertSettings, alerts: window.mock.alerts ?? [], roundOverride: window.mock.roundScreen ?? null, crashReports: window.mock.crashReports ?? null, crashReportsAvailable: true, crashedLastTime: window.mock.crashedLastTime ?? false, screen: { width: screenWidth, height: screenHeight, round: window.mock.roundScreen ?? screenWidth === 480, model: screenWidth === 480 ? 'Core Vision 360' : `${screenWidth}×${screenHeight} Screen` }, fonts: ['Arial', 'Consolas', 'Georgia', 'Impact', 'Segoe UI'], status: { state: 'Connected', text: 'Screen connected' } });
+  emit({ type: 'state', version: '1.7.0', themes, current: theme, currentPath: window.mock.path, rotation: window.mock.rotation ?? 0, startup: window.mock.startup ?? false, removedDefaults: removed.size, playlist: window.mock.playlist ?? { enabled: false, paths: [], seconds: 30 }, alertSettings: window.mock.alertSettings, alerts: window.mock.alerts ?? [], roundOverride: window.mock.roundScreen ?? null, crashReports: window.mock.crashReports ?? null, crashReportsAvailable: true, crashedLastTime: window.mock.crashedLastTime ?? false, screen: { width: screenWidth, height: screenHeight, round: window.mock.roundScreen ?? screenWidth === 480, model: screenWidth === 480 ? 'Core Vision 360' : `${screenWidth}×${screenHeight} Screen` }, fonts: ['Arial', 'Consolas', 'Georgia', 'Impact', 'Segoe UI'], status: { state: 'Connected', text: 'Screen connected' } });
 }
 
 window.mock = { sent: [], path: null, saved, emit };
@@ -290,6 +290,187 @@ window.chrome.webview = {
       emit({ type: 'weather', ...window.mock.weather });
       const report = message.units === 'Imperial' ? { temperature: 54, high: 56, low: 45 } : { temperature: 12, high: 13, low: 7 };
       setTimeout(() => { window.mock.weather.report = { ...report, description: 'Partly Cloudy', fetched: new Date().toISOString(), stale: false }; emit({ type: 'weather', ...window.mock.weather }); }, 300);
+    }
+    // Lighting. The ASUS board is driven directly, so it shows as soon as lighting is on; the memory and
+    // graphics card arrive a moment later, as if OpenRGB had connected. Open with ?openrgb=Missing, Installed
+    // or Running to stay without OpenRGB, and ?lighting=on to start with everything connected.
+    // The canvas here is a rough stand-in for the app's: every effect shows as a rainbow, a bar or a flat color.
+    const lightEffects = [
+      { id: 'solid', name: 'Solid Color', description: 'One color on everything.', params: [{ key: 'color', label: 'Color', kind: 'Color', default: '#00E5FF', min: 0, max: 100 }] },
+      { id: 'rainbow', name: 'Rainbow Wave', description: 'The whole color wheel, rolling across your PC.', params: [
+        { key: 'speed', label: 'Speed', kind: 'Number', default: '50', min: 0, max: 100 }, { key: 'bands', label: 'Rainbows Across', kind: 'Number', default: '1', min: 1, max: 6 },
+        { key: 'vertical', label: 'Top to Bottom', kind: 'Toggle', default: 'false', min: 0, max: 100 }] },
+      { id: 'sweep', name: 'Sweep', description: 'A bar that glides from side to side, trailing light behind it.', params: [
+        { key: 'color', label: 'Color', kind: 'Color', default: '#FF0066', min: 0, max: 100 }, { key: 'random', label: 'New Color Each Pass', kind: 'Toggle', default: 'false', min: 0, max: 100 },
+        { key: 'speed', label: 'Speed', kind: 'Number', default: '50', min: 0, max: 100 }, { key: 'trail', label: 'Trail', kind: 'Number', default: '50', min: 0, max: 100 },
+        { key: 'width', label: 'Bar Width', kind: 'Number', default: '12', min: 2, max: 60 }, { key: 'vertical', label: 'Top to Bottom', kind: 'Toggle', default: 'false', min: 0, max: 100 },
+        { key: 'background', label: 'Background Color', kind: 'Color', default: '#101014', min: 0, max: 100 }] },
+      { id: 'aurora', name: 'Aurora', description: 'Slow ribbons of color that never quite repeat.', params: [
+        { key: 'color', label: 'Color 1', kind: 'Color', default: '#00FFC8', min: 0, max: 100 }, { key: 'speed', label: 'Speed', kind: 'Number', default: '50', min: 0, max: 100 }] },
+    ];
+    const light = window.mock.lighting ??= {
+      enabled: false, startOpenRgb: true, state: 'Off', openRgb: 'Installed', openRgbUp: false,
+      headers: { 'Addressable RGB Header 1': 0 }, own: {}, parts: {},
+      canvas: { effect: 'rainbow', brightness: 100, width: 320, height: 200, placements: {}, effectPresets: [], layoutPresets: [],
+        values: Object.fromEntries(lightEffects.map((effect) => [effect.id, Object.fromEntries(effect.params.map((param) => [param.key, param.default]))])) },
+      savedEffects: {}, savedLayouts: {},
+    };
+    const lightModes = [{ name: 'Breathing', hasSpeed: true, colors: 1 }, { name: 'Rainbow', hasSpeed: true, colors: 0 }];
+    const lightDevices = () => [
+      { key: 'ASUS PRIME B550M-A WIFI II|AuraUSB 1939', name: 'ASUS PRIME B550M-A WIFI II', kind: 'Motherboard', modes: [...lightModes, { name: 'Spectrum Cycle', hasSpeed: false, colors: 0 }],
+        zones: [{ name: 'Aura Mainboard', ledCount: 2, resizable: false, maxLeds: 2 }, { name: 'Addressable RGB Header 1', ledCount: light.headers['Addressable RGB Header 1'], resizable: true, maxLeds: 500 }] },
+      ...[1, 2, 3, 4].map((stick) => ({ key: `ENE DRAM|AMD SMBus port 0|Stick ${stick}`, name: `RGB Memory ${stick}`, kind: 'Dram', modes: lightModes, zones: [{ name: 'DRAM', ledCount: 8, resizable: false, maxLeds: 8 }] })),
+      { key: 'MSI GeForce RTX 4070|I2C 0x68', name: 'MSI GeForce RTX 4070 Ventus', kind: 'Gpu', modes: [], zones: [{ name: 'GPU', ledCount: 1, resizable: false, maxLeds: 1 }] },
+    ].filter((device) => light.openRgbUp || device.kind === 'Motherboard' || (light.memory && device.kind === 'Dram'))
+      .map((device) => ({ ...device, ledCount: device.zones.reduce((sum, zone) => sum + zone.ledCount, 0), override: light.own[device.key] ?? null,
+        zones: device.zones.map((zone) => ({ ...zone, key: `${device.key}|${zone.name}`, parts: light.parts[`${device.key}|${zone.name}`] ?? [] })) }))
+      .map((device) => ({ ...device, boxes: device.zones.flatMap(splitZone) }));
+    // Like LightParts.Split: a divided strip shows as its parts, and LEDs past the last part as "Rest".
+    const splitZone = (zone) => {
+      if (!zone.parts.length || !zone.ledCount) return [{ key: zone.key, zone: zone.name, name: zone.name, ledCount: zone.ledCount, shape: 'Strip' }];
+      const boxes = [];
+      let left = zone.ledCount;
+      zone.parts.forEach((part) => {
+        if (left <= 0) return;
+        const leds = Math.min(part.leds, left);
+        boxes.push({ key: `${zone.key}#${boxes.length + 1}`, zone: zone.name, name: part.name, ledCount: leds, shape: part.shape });
+        left -= leds;
+      });
+      if (left > 0) boxes.push({ key: `${zone.key}#${boxes.length + 1}`, zone: zone.name, name: 'Rest', ledCount: left, shape: 'Strip' });
+      return boxes;
+    };
+    // Like LightPlacement.Arrange: a row for each strip, as wide as its LED count suggests, and rings along the bottom.
+    const arrange = (devices) => {
+      const all = devices.flatMap((device) => device.boxes);
+      const rings = Object.fromEntries(all.filter((box) => box.shape === 'Ring').map((box, index) =>
+        [box.key, light.canvas.placements[box.key] ?? { x: 12 + (index % 6) * 48, y: 148 - Math.floor(index / 6) * 48, width: 40, height: 40, rotation: 0, brightness: 100 }]));
+      const zones = all.filter((box) => box.shape !== 'Ring');
+      const ringRows = Math.ceil(Object.keys(rings).length / 6);
+      const step = Math.min(22, Math.max(4, (176 - ringRows * 48) / Math.max(1, zones.length)));
+      const most = Math.max(1, ...zones.map((zone) => zone.ledCount));
+      return Object.assign(rings, Object.fromEntries(zones.map((zone, index) => {
+        const width = Math.round(Math.min(296, Math.max(60, 296 * zone.ledCount / most)));
+        return [zone.key, light.canvas.placements[zone.key] ?? { x: Math.round((320 - width) / 2), y: Math.round(12 + index * step), width, height: Math.round(Math.max(4, step - 6)), rotation: 0, brightness: 100 }];
+      })));
+    };
+    const lighting = () => {
+      const devices = light.state === 'Connected' ? lightDevices() : [];
+      emit({ type: 'lighting', enabled: light.enabled, startOpenRgb: light.startOpenRgb, memory: Boolean(light.memory), asrock: Boolean(light.asrock), gpu: Boolean(light.gpu), state: light.state,
+        openRgbConnected: light.openRgbUp, openRgb: light.openRgbUp ? 'Running' : light.openRgb, effects: lightEffects, devices,
+        conflicts: new URLSearchParams(location.search).getAll('conflict'),
+        canvas: structuredClone({ ...light.canvas, placements: arrange(devices) }) });
+    };
+    const connectLighting = () => {
+      const stuck = new URLSearchParams(location.search).get('openrgb');
+      light.state = 'Connected';
+      light.openRgbUp = false;
+      if (stuck) { light.openRgb = stuck; lighting(); return; }
+      lighting();
+      setTimeout(() => { if (light.enabled) { light.openRgbUp = true; lighting(); } }, 1200);
+    };
+    if (message.type === 'ready' && new URLSearchParams(location.search).get('lighting') === 'on') { light.enabled = true; light.state = 'Connected'; light.openRgbUp = true; light.memory = true; }
+    if (message.type === 'ready' || message.type === 'lighting') lighting();
+    if (message.type === 'lightingEnabled') {
+      light.enabled = message.enabled;
+      if (message.enabled) connectLighting(); else { light.state = 'Off'; light.openRgbUp = false; lighting(); }
+    }
+    if (message.type === 'retryLighting') connectLighting();
+    if (message.type === 'asrockLighting') { light.asrock = message.enabled; setTimeout(lighting, 300); }
+    if (message.type === 'gpuLighting') { light.gpu = message.enabled; setTimeout(lighting, 300); }
+    if (message.type === 'memoryLighting') { light.memory = message.enabled; setTimeout(lighting, 300); }
+    if (message.type === 'startOpenRgb') light.startOpenRgb = message.enabled;
+    if (message.type === 'openRgbSite') emit({ type: 'notice', message: 'openrgb.org opened in the browser' });
+    if (message.type === 'zoneParts') {
+      const key = `${message.device}|${message.zone}`;
+      if (message.parts.length) light.parts[key] = message.parts.slice(0, 16); else delete light.parts[key];
+      Object.keys(light.canvas.placements).filter((placed) => placed.startsWith(`${key}#`)).forEach((placed) => delete light.canvas.placements[placed]);
+      lighting();
+    }
+    if (message.type === 'headerLeds') { light.headers[message.zone] = message.leds; lighting(); }
+    if (message.type === 'setLighting') { if (message.choice) light.own[message.device] = message.choice; else delete light.own[message.device]; }
+    if (message.type === 'canvasEffect') { light.canvas.effect = message.effect; lighting(); }
+    if (message.type === 'effectValue') light.canvas.values[message.effect][message.key] = message.value;
+    if (message.type === 'canvasBrightness') light.canvas.brightness = message.brightness;
+    if (message.type === 'placement') { const { type, zone, ...place } = message; light.canvas.placements[zone] = place; }
+    if (message.type === 'resetLayout') { light.canvas.placements = {}; lighting(); }
+    if (message.type === 'saveEffectPreset') {
+      light.savedEffects[message.name] = { effect: light.canvas.effect, values: structuredClone(light.canvas.values[light.canvas.effect]) };
+      light.canvas.effectPresets = Object.entries(light.savedEffects).map(([name, saved]) => ({ name, effect: lightEffects.find((effect) => effect.id === saved.effect).name }));
+      lighting();
+    }
+    if (message.type === 'loadEffectPreset' && light.savedEffects[message.name]) {
+      const saved = light.savedEffects[message.name];
+      light.canvas.effect = saved.effect;
+      light.canvas.values[saved.effect] = structuredClone(saved.values);
+      lighting();
+    }
+    if (message.type === 'deleteEffectPreset') {
+      delete light.savedEffects[message.name];
+      light.canvas.effectPresets = light.canvas.effectPresets.filter((preset) => preset.name !== message.name);
+      lighting();
+    }
+    if (message.type === 'saveLayoutPreset') {
+      light.savedLayouts[message.name] = structuredClone(arrange(lightDevices()));
+      light.canvas.layoutPresets = Object.keys(light.savedLayouts);
+      lighting();
+    }
+    if (message.type === 'loadLayoutPreset' && light.savedLayouts[message.name]) { Object.assign(light.canvas.placements, structuredClone(light.savedLayouts[message.name])); lighting(); }
+    if (message.type === 'deleteLayoutPreset') { delete light.savedLayouts[message.name]; light.canvas.layoutPresets = Object.keys(light.savedLayouts); lighting(); }
+
+    const hueColor = (turn) => { const f = (n) => { const k = (n + (turn - Math.floor(turn)) * 6) % 6; return 255 * (1 - Math.max(0, Math.min(k, 4 - k, 1))); }; return [f(5), f(3), f(1)]; };
+    const hexColor = (hex) => [1, 3, 5].map((start) => parseInt(hex.slice(start, start + 2), 16));
+    const mockCanvasColor = (effect, x, y, seconds) => {
+      const values = light.canvas.values[effect];
+      const along = values.vertical === 'true' ? y : x;
+      const pace = 0.04 * 2 ** (Number(values.speed ?? 50) / 20);
+      if (effect === 'solid') return hexColor(values.color);
+      if (effect === 'sweep') {
+        const width = Number(values.width) / 100;
+        const center = width / 2 + (1 - width) * (0.5 - 0.5 * Math.cos(seconds * pace * Math.PI * 2));
+        return Math.abs(along - center) <= width / 2 ? hexColor(values.color) : hexColor(values.background);
+      }
+      if (effect === 'aurora') { const level = 0.5 + 0.5 * Math.sin((along + seconds * pace) * Math.PI * 2); return hexColor(values.color).map((channel) => channel * level); }
+      return hueColor(along * Number(values.bands ?? 1) - seconds * pace);
+    };
+    const mockPixels = (effect, seconds, width, height, level) => {
+      const bytes = new Uint8Array(width * height * 3);
+      for (let row = 0; row < height; row += 1) for (let column = 0; column < width; column += 1) {
+        bytes.set(mockCanvasColor(effect, (column + 0.5) / width, (row + 0.5) / height, seconds).map((channel) => channel * level), (row * width + column) * 3);
+      }
+      let text = '';
+      for (let at = 0; at < bytes.length; at += 8192) text += String.fromCharCode(...bytes.subarray(at, at + 8192));
+      return btoa(text);
+    };
+    if (message.type === 'lightingThumbs') {
+      emit({ type: 'lightingThumbs', width: 96, height: 60, thumbs: Object.fromEntries(lightEffects.map((effect) => [effect.id, mockPixels(effect.id, 1.3, 96, 60, 1)])) });
+    }
+    if (message.type === 'watchLighting') {
+      clearInterval(window.mock.lightTimer);
+      if (message.watching) window.mock.lightTimer = setInterval(() => {
+        if (light.state !== 'Connected') return;
+        const seconds = Date.now() / 1000;
+        const devices = lightDevices();
+        const places = arrange(devices);
+        const colors = {};
+        devices.forEach((device) => {
+          if (device.override?.kind === 'DeviceEffect') return;
+          colors[device.key] = device.boxes.map((zone) => {
+            const place = places[zone.key];
+            const wide = place.width >= place.height;
+            const turn = place.rotation * Math.PI / 180;
+            return Array.from({ length: zone.ledCount }, (_, led) => {
+              const along = ((led + 0.5) / zone.ledCount - 0.5) * (wide ? place.width : place.height);
+              const angle = led * Math.PI * 2 / zone.ledCount - Math.PI / 2;
+              const [lx, ly] = zone.shape === 'Ring' ? [Math.cos(angle) * place.width / 2, Math.sin(angle) * place.height / 2] : wide ? [along, 0] : [0, along];
+              const x = Math.min(1, Math.max(0, (place.x + place.width / 2 + lx * Math.cos(turn) - ly * Math.sin(turn)) / 320));
+              const y = Math.min(1, Math.max(0, (place.y + place.height / 2 + lx * Math.sin(turn) + ly * Math.cos(turn)) / 200));
+              const level = device.override?.kind === 'Off' ? 0 : light.canvas.brightness / 100 * place.brightness / 100;
+              return mockCanvasColor(light.canvas.effect, x, y, seconds).map((channel) => Math.round(channel * level).toString(16).padStart(2, '0')).join('');
+            }).join('');
+          }).join('');
+        });
+        emit({ type: 'lightingFrame', colors, width: 320, height: 200, canvas: mockPixels(light.canvas.effect, seconds, 320, 200, light.canvas.brightness / 100) });
+      }, 66);
     }
     if (message.type === 'stopMusic') { window.mock.playing = false; emit({ type: 'nowPlaying', media: null }); }
     if (message.type === 'pickMedia') emit({ type: 'media', kind: 'Image', path: 'C:\\Pictures\\wallpaper.jpg' });
