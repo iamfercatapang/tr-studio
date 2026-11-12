@@ -146,9 +146,9 @@ public class ScsiScreenTests
     }
 
     [Fact]
-    public void Scsi_models_are_tried_last_and_no_longer_listed_as_unsupported()
+    public void Scsi_models_come_after_the_others_and_are_no_longer_listed_as_unsupported()
     {
-        Assert.Equal([ScreenDevice.CoreVision, ScreenDevice.TrofeoVision, ScreenDevice.HidLcd, ScreenDevice.AliLcd, ScreenDevice.FrozenScsi, ScreenDevice.WarframeScsi], ScreenDevice.All);
+        Assert.Equal([ScreenDevice.CoreVision, ScreenDevice.TrofeoVision, ScreenDevice.HidLcd, ScreenDevice.AliLcd, ScreenDevice.FrozenScsi, ScreenDevice.WarframeScsi, ScreenDevice.Lovingcool], ScreenDevice.All);
         Assert.All(new[] { ScreenDevice.FrozenScsi, ScreenDevice.WarframeScsi }, model =>
         {
             Assert.Equal(ScreenTransportKind.Scsi, model.Transport);

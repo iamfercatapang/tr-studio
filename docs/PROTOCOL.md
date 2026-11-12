@@ -25,7 +25,7 @@ Only mode 3 has been tested on real hardware. The rest come from TRCC's code.
 
 ## Other display families
 
-Besides the Core Vision family, the app drives four families experimentally, decoded from TRCC 2.1.4 without the screens. It only names the rest and sends them nothing.
+Besides the Core Vision family, the app drives Lovingcool screens (see below) and four families experimentally, decoded from TRCC 2.1.4 without the screens. It only names the rest and sends them nothing.
 
 - 0416:5408 (Trofeo Vision 9.16"), TRCC's "LY": decoded below, driven by `TrofeoProtocol`.
 - 0416:5302, TRCC's HID screens: decoded below, driven by `HidLcdProtocol` over HID.
@@ -39,7 +39,18 @@ Besides the Core Vision family, the app drives four families experimentally, dec
 Decoded from `ThreadSendDeviceDataLY` in `USBLCDNEW.dll` of TRCC 2.1.2 and 2.1.4, whose code is identical.
 TRCC calls this family "LY". **Nothing here has been tried on a real screen.**
 
-### HID screens (USB 0416:5302)
+### Lovingcool screens (USB 33C3:7788)
+
+Written from the protocol facts documented by lovi-ctrl (github.com/newan0805/loving_cool_aio_display_manage), which reverse engineered the vendor's app. That repository has no license, so only facts were used, no code. Tested there on a 480x320 "txm818-7inch" unit; **not tried on real hardware here.** 33C3:7797 and 7791 may be variants and aren't driven.
+
+- A USB serial (CDC) port at 2,000,000 baud with DTR on. The app finds its COM port from the `PortName` Windows keeps under the device's registry key.
+- Commands: `55 AA`, the whole command's length (payload + 7) as a 16-bit little-endian number, the command byte, the payload, then the 16-bit little-endian sum of every byte before it.
+- `0x06` asks for info. The reply is a command frame whose payload is JSON: `width`, `height`, `brightness`, `model`, `version`, `uid`, `region` (sometimes inside `data`).
+- `0x11` starts live pictures, once per connection. No answer is read for it or for pictures.
+- A picture is a JPEG of at most 50 KB, at the panel's size. Firmware whose version number is above 2.8 wants it wrapped: the JPEG's length (4 bytes, little-endian), the JPEG, then the 16-bit sum of those bytes. Older firmware (Ver1.0) takes the bare JPEG.
+- Other commands: `0x01` restarts the screen, `0x03` sets brightness (one byte, 0 to 100). The app doesn't use them.
+
+## HID screens (USB 0416:5302)
 
 Decoded from `UCDevice` (`DeviceOnConnected2`, `DeviceDataReceived2`, `ThreadSendDeviceData2`) and `FormCZTV` (`FormCZTVInit`, `ImageToJpg`) in `TRCC.exe`, and `CommandMessage` in `UsbHid.dll`, TRCC 2.1.4. Products: Trofeo Vision LCD, Assassin Spirit 120 Vision, Frozen Warframe SE, 360 and Pro, AS120 and BA120 Vision. **Nothing here has been tried on a real screen.**
 

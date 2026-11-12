@@ -8,8 +8,8 @@ public interface IScreenFamily
     void Send(IScreenTransport transport, byte[] frame);
 }
 
-/// <summary>How Windows talks to the screen: WinUSB bulk pipes, HID reports (no driver needed), or SCSI commands to a USB drive (admin needed).</summary>
-public enum ScreenTransportKind { WinUsb, Hid, Scsi }
+/// <summary>How Windows talks to the screen: WinUSB bulk pipes, HID reports (no driver needed), SCSI commands to a USB drive (admin needed), or a USB serial port.</summary>
+public enum ScreenTransportKind { WinUsb, Hid, Scsi, Serial }
 
 /// <summary>A screen model TR Studio can drive: where it is on USB and which format it speaks.</summary>
 public sealed record ScreenDevice(string Name, ushort VendorId, ushort ProductId, byte EndpointOut, IScreenFamily Family,
@@ -34,8 +34,13 @@ public sealed record ScreenDevice(string Name, ushort VendorId, ushort ProductId
     /// <summary>Experimental: TRCC's SCSI screens on the Frozen Warframe and Frozen Warframe 240.</summary>
     public static ScreenDevice WarframeScsi { get; } = new("Frozen Warframe screen", 0x0402, 0x3922, 0, new ScsiLcdFamily(), ScreenTransportKind.Scsi);
 
+    /// <summary>Experimental: Lovingcool (Lovi.Cool) AIO screens, a USB serial port.</summary>
+
+    public static ScreenDevice Lovingcool { get; } = new("Lovingcool screen", 0x33C3, 0x7788, 0, new LovingcoolFamily(), ScreenTransportKind.Serial);
+
+
     /// <summary>Tried in this order, so the tested Core Vision always wins when more than one is plugged in.</summary>
-    public static IReadOnlyList<ScreenDevice> All { get; } = [CoreVision, TrofeoVision, HidLcd, AliLcd, FrozenScsi, WarframeScsi];
+    public static IReadOnlyList<ScreenDevice> All { get; } = [CoreVision, TrofeoVision, HidLcd, AliLcd, FrozenScsi, WarframeScsi, Lovingcool];
 }
 
 sealed class CoreVisionFamily : IScreenFamily
