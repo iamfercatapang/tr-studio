@@ -149,9 +149,9 @@ public class ScreenSizeTests
     [Fact]
     public void Names_a_display_it_cannot_drive_without_opening_it()
     {
-        string[] usb = [@"\\?\usb#vid_046d&pid_c52b#x#{a5dcbf10}", @"\\?\usb#vid_0416&pid_5406#abc#{a5dcbf10}"];
+        string[] usb = [@"\\?\usb#vid_046d&pid_c52b#x#{a5dcbf10}", @"\\?\usb#vid_0416&pid_5409#abc#{a5dcbf10}"];
         var error = Assert.Throws<ScreenUnsupportedException>(() => ScreenFinder.Open(Missing, () => usb));
-        Assert.Contains("0416:5406", error.Message);
+        Assert.Contains("0416:5409", error.Message);
     }
 
     [Fact]

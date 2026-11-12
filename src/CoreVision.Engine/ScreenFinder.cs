@@ -10,7 +10,7 @@ public static partial class ScreenFinder
 {
     public static IReadOnlySet<(ushort Vid, ushort Pid)> UnsupportedDisplays { get; } = new HashSet<(ushort, ushort)>
     {
-        (0x0416, 0x5302), (0x0416, 0x5406), (0x0416, 0x5409),
+        (0x0416, 0x5409), (0x0418, 0x5303), (0x0418, 0x5304),
     };
 
     public static IScreenTransport Open(Func<IScreenTransport> open, Func<IEnumerable<string>> usbPaths)
@@ -22,7 +22,9 @@ public static partial class ScreenFinder
             // A supported model can be plugged in yet not openable, when Windows gave it a driver other than WinUSB.
             var unopened = ScreenDevice.All.FirstOrDefault(model => present.Contains((model.VendorId, model.ProductId)));
             if (unopened != null)
-                throw new ScreenUnsupportedException($"Found a {unopened.Name}, but couldn't open it. Its USB driver may not be WinUSB.");
+                throw new ScreenUnsupportedException(unopened.Transport != ScreenTransportKind.WinUsb
+                    ? $"Found a {unopened.Name}, but couldn't open it."
+                    : $"Found a {unopened.Name}, but couldn't open it. Its USB driver may not be WinUSB.");
             var other = present.FirstOrDefault(UnsupportedDisplays.Contains);
             if (other != default)
                 throw new ScreenUnsupportedException($"Found a Thermalright display (USB {other.Vid:X4}:{other.Pid:X4}) that isn't supported yet.");
@@ -40,7 +42,9 @@ public static partial class ScreenFinder
             catch (ScreenNotFoundException e) { missing ??= e; }
             catch (IOException e) when (e is not ScreenBusyException && model != ScreenDevice.CoreVision)
             {
-                throw new ScreenUnsupportedException($"Found a {model.Name}, but couldn't open it ({e.Message}). Its USB driver may not be WinUSB.");
+                throw new ScreenUnsupportedException(model.Transport != ScreenTransportKind.WinUsb
+                    ? $"Found a {model.Name}, but couldn't open it ({e.Message})."
+                    : $"Found a {model.Name}, but couldn't open it ({e.Message}). Its USB driver may not be WinUSB.");
             }
         }
         throw missing ?? new ScreenNotFoundException("Screen is not connected");
