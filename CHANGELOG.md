@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.6.3 (Nov 12, 2026)
 
 - **Lovingcool screens, experimental.** TR Studio now drives Lovingcool (Lovi.Cool) AIO screens (USB 33C3:7788), which Windows sees as a COM port. It was written from what the lovi-ctrl project documented about them, without the hardware. If you own one, please report how it goes.
 - **More screens, experimental.** TR Studio now talks to three more kinds of Thermalright-style screen, worked out from TRCC without the hardware: HID screens (USB 0416:5302: Trofeo Vision LCD, Assassin Spirit 120 Vision, Frozen Warframe SE, 360 and Pro, AS120 and BA120 Vision), small RGB565 screens (USB 0416:5406, such as the LC-series pump heads), and screens that Windows sees as a USB drive (USB 87CD:70DB on the Frozen Horizon Pro, Frozen Magic Pro and Frozen Vision V2, and USB 0402:3922 on the Frozen Warframe and Frozen Warframe 240; these need TR Studio running as administrator, as the installed app does). Screens from other brands built on the same parts should work too. If you own one, please report how it goes.
