@@ -70,7 +70,7 @@ sealed class TrayContext : ApplicationContext
         Log(HasPawnIO() ? "PawnIO driver installed" : "PawnIO driver missing: CPU temperature, clock and power and motherboard fans can't be read");
         _sensors = new SensorMonitor(() => new LibreSensorSource(() => _settings.Fans ?? new FanChoice(), Log, () => _settings.Gpu), log: Log);
         _sensors.Start();
-        _link = new ScreenLink(() => ScreenFinder.Open(() => ScreenFinder.OpenFirst(ScreenDevice.All, model => WinUsbDevice.Open(model)),
+        _link = new ScreenLink(() => ScreenFinder.Open(() => ScreenFinder.OpenFirst(ScreenDevice.All, ScreenOpener.Open),
             WinUsbDevice.PresentUsbPaths), log: Log);
 
         _ffmpeg = ThemeStore.FindFfmpeg();
