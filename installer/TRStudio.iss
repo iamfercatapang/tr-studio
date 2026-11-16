@@ -39,7 +39,7 @@ Source: "..\artifacts\publish\*"; DestDir: "{app}"; Flags: ignoreversion recurse
 Source: "..\third-party\pawnio\PawnIO_setup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall; Tasks: pawnio; Check: not HasPawnIO
 
 [InstallDelete]
-; Up to 1.6.2 the program was CoreVision.App.exe. An update takes the old copy out so only TRStudio.exe is left.
+; Up to 1.6.3 the program was CoreVision.App.exe. An update takes the old copy out so only TRStudio.exe is left.
 Type: files; Name: "{app}\CoreVision.App.exe"
 Type: files; Name: "{app}\CoreVision.App.dll"
 Type: files; Name: "{app}\CoreVision.App.pdb"

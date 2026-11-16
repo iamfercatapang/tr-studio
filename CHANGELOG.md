@@ -15,15 +15,18 @@
 - **Presets** for effect settings and for layouts.
 - **A device can leave the canvas**: set it to Off, or to one of the effects it runs by itself.
 - **Addressable headers.** A header can't count its LEDs, so each one has a box for how many are plugged in.
-- **More screens, experimental.** TR Studio now talks to two more kinds of Thermalright-style screen, worked out from TRCC without the hardware: HID screens (USB 0416:5302: Trofeo Vision LCD, Assassin Spirit 120 Vision, Frozen Warframe SE, 360 and Pro, AS120 and BA120 Vision) and small RGB565 screens (USB 0416:5406, such as the LC-series pump heads). Screens from other brands built on the same parts should work too. If you own one, please report how it goes.
-- **SCSI screens, experimental.** TR Studio now also drives the screens that Windows sees as a USB drive (USB 87CD:70DB on the Frozen Horizon Pro, Frozen Magic Pro and Frozen Vision V2, and USB 0402:3922 on the Frozen Warframe and Frozen Warframe 240), worked out from TRCC without the hardware. They need TR Studio running as administrator, as the installed app does. If you own one, please report how it goes.
 - The version now shows under TR Studio in the sidebar.
 - The program file is now `TRStudio.exe` instead of `CoreVision.App.exe`. Updating removes the old file, and your themes and settings stay where they are.
 - The Lighting page says when another lighting app, such as Armoury Crate or iCUE, is running, since two apps driving the same lights make them flicker.
 - RGB memory on Intel boards is new and nobody has confirmed it yet; AMD boards are tested.
 - Lights get their colors back after the PC wakes from sleep or OpenRGB restarts. After waking, TR Studio waits a few seconds for the hardware to come back, then sets every light again, including the size of each addressable header, so a header no longer stays on the board's own rainbow after waking. A light that goes back to its own effect is taken back within seconds, and a controller that stops answering no longer freezes every light.
 - Effects stay smooth while TR Studio sits in the tray. Windows had been slowing apps with no open window, which made RGB memory stutter.
-- **TR Studio is now licensed under the GPL, version 2 or later**, instead of MIT, so it can use OpenRGB's drivers. Versions up to 1.6.2 stay MIT. The installer now puts the license in the app folder.
+- **TR Studio is now licensed under the GPL, version 2 or later**, instead of MIT, so it can use OpenRGB's drivers. Versions up to 1.6.3 stay MIT. The installer now puts the license in the app folder.
+
+## 1.6.3 (Nov 12, 2026)
+
+- **Lovingcool screens, experimental.** TR Studio now drives Lovingcool (Lovi.Cool) AIO screens (USB 33C3:7788), which Windows sees as a COM port. It was written from what the lovi-ctrl project documented about them, without the hardware. If you own one, please report how it goes.
+- **More screens, experimental.** TR Studio now talks to three more kinds of Thermalright-style screen, worked out from TRCC without the hardware: HID screens (USB 0416:5302: Trofeo Vision LCD, Assassin Spirit 120 Vision, Frozen Warframe SE, 360 and Pro, AS120 and BA120 Vision), small RGB565 screens (USB 0416:5406, such as the LC-series pump heads), and screens that Windows sees as a USB drive (USB 87CD:70DB on the Frozen Horizon Pro, Frozen Magic Pro and Frozen Vision V2, and USB 0402:3922 on the Frozen Warframe and Frozen Warframe 240; these need TR Studio running as administrator, as the installed app does). Screens from other brands built on the same parts should work too. If you own one, please report how it goes.
 
 ## 1.6.2 (Nov 10, 2026)
 

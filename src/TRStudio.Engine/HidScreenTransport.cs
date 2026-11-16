@@ -64,6 +64,7 @@ public static class ScreenOpener
     {
         ScreenTransportKind.Hid => HidScreenTransport.Open(model),
         ScreenTransportKind.Scsi => ScsiScreenTransport.Open(model),
+        ScreenTransportKind.Serial => SerialScreenTransport.Open(model),
         _ => WinUsbDevice.Open(model),
     };
 }
