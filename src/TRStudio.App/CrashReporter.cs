@@ -71,6 +71,8 @@ static class CrashReporter
                 options.MaxBreadcrumbs = LogLines;
                 options.SetBeforeSend((report, _) => Clean(report));
                 options.SetBeforeBreadcrumb((crumb, _) => null); // only the log lines added in Clean
+                options.SetBeforeSendLog(_ => null); // 7.0 sends logs by default; only crash reports leave the PC
+                options.SetBeforeSendMetric(_ => null);
             });
             log.Write("Crash reports on");
         }
